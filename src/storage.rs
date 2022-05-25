@@ -2,7 +2,7 @@ use {
   anyhow::{anyhow, Result},
   cid::{multihash::Code, Cid},
   fvm_ipld_blockstore::Block,
-  fvm_sdk as sdk,
+  fvm_sdk::ipld,
   std::convert::TryFrom,
 };
 
@@ -12,7 +12,7 @@ pub struct Blockstore;
 impl fvm_ipld_blockstore::Blockstore for Blockstore {
   fn get(&self, cid: &Cid) -> Result<Option<Vec<u8>>> {
     // If this fails, the _CID_ is invalid. I.e., we have a bug.
-    sdk::ipld::get(cid)
+    ipld::get(cid)
       .map(Some)
       .map_err(|e| anyhow!("get failed with {:?} on CID '{}'", e, cid))
   }
@@ -34,7 +34,7 @@ impl fvm_ipld_blockstore::Blockstore for Blockstore {
     // TODO: Don't hard-code the size. Unfortunately, there's no good way to get
     // it from the  codec at the moment.
     const SIZE: u32 = 32;
-    let k = sdk::ipld::put(code.into(), SIZE, block.codec, block.data.as_ref())
+    let k = ipld::put(code.into(), SIZE, block.codec, block.data.as_ref())
       .map_err(|e| anyhow!("put failed with {:?}", e))?;
     Ok(k)
   }

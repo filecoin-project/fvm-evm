@@ -4,11 +4,11 @@ all: build
 .PHONY: all
 
 build:
-	cargo build --target wasm32-unknown-unknown --release
+	cargo build
 .PHONY: build
 
 clean:
-	cargo clean
+	@rm -rf target && cargo clean
 
 test:
 	cargo test

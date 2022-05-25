@@ -75,17 +75,13 @@ mod tests {
       tracing::NoopTracer,
       util::Bytecode,
       AnalyzedCode,
+      CallKind,
       Message,
       Output,
       Revision,
       StatusCode,
     },
   };
-
-  #[test]
-  fn instantiate_evm_actor() {
-    todo!();
-  }
 
   #[test]
   fn evmodin_smoke_test() {
@@ -99,7 +95,7 @@ mod tests {
       .build();
 
     let message = Message {
-      kind: evmodin::CallKind::Call,
+      kind: CallKind::Call,
       is_static: true,
       depth: 0,
       gas: 200,
