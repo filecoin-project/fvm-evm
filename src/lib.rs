@@ -4,7 +4,7 @@ mod storage;
 
 use {
   abort::abort,
-  fvm_ipld_encoding::{to_vec, RawBytes, DAG_CBOR},
+  fvm_ipld_encoding::{RawBytes, DAG_CBOR},
   fvm_sdk::{ipld, message, NO_DATA_BLOCK_ID},
   fvm_shared::ActorID,
   state::State,
@@ -15,7 +15,7 @@ pub fn invoke(_: u32) -> u32 {
   // Conduct method dispatch. Handle input parameters and return data.
   let ret: Option<RawBytes> = match message::method_number() {
     1 => constructor(),
-    2 => say_hello(),
+    2 => todo!(), // send_message
     _ => abort!(USR_UNHANDLED_MESSAGE, "unrecognized method"),
   };
 
@@ -46,24 +46,6 @@ pub fn constructor() -> Option<RawBytes> {
   let state = State::default();
   state.save();
   None
-}
-
-pub fn say_hello() -> Option<RawBytes> {
-  let mut state = State::load();
-  state.count += 1;
-  state.save();
-
-  let ret = to_vec(format!("Hello world #{}!", &state.count).as_str());
-  match ret {
-    Ok(ret) => Some(RawBytes::new(ret)),
-    Err(err) => {
-      abort!(
-        USR_ILLEGAL_STATE,
-        "failed to serialize return value: {:?}",
-        err
-      );
-    }
-  }
 }
 
 #[cfg(test)]

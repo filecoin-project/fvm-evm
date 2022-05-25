@@ -14,12 +14,13 @@ fvm_sdk = { version = "1.0.0-rc.1", git = "https://github.com/filecoin-project/r
 fvm_shared = { version = "0.7.0", git = "https://github.com/filecoin-project/ref-fvm" }
 fvm_ipld_blockstore = "0.1.1"
 fvm_ipld_encoding = "0.2.1"
+fvm_ipld_hamt = "0.5.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_tuple = "0.5"
 anyhow = "1.0"
 
 # Ethereum VM support types
-ethereum-types = "0.12"
+ethereum-types = { version = "0.12", features = ["impl-serde"] }
 evmodin = { git = "https://github.com/vorot93/evmodin.git", features = ["util"] }
 
 [build-dependencies]
