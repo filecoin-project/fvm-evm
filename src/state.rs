@@ -1,7 +1,6 @@
 use {
   crate::{abort::abort, storage::Blockstore},
   cid::{multihash::Code, Cid},
-  core::slice::SlicePattern,
   fvm_ipld_encoding::{to_vec, Cbor, CborStore, DAG_CBOR},
   fvm_ipld_hamt::Hamt,
   fvm_sdk::{ipld, sself},
@@ -69,7 +68,7 @@ impl EVMContractState {
           "failed to store EVM contract bytecode: {err}"
         ),
       };
-    let state_cid = match Hamt::<String, String>::new(Blockstore).flush() {
+    let state_cid = match Hamt::<Blockstore, String>::new(Blockstore).flush() {
       Ok(cid) => cid,
       Err(err) => abort!(
         USR_SERIALIZATION,
@@ -77,7 +76,12 @@ impl EVMContractState {
       ),
     };
 
-    let serialized = match to_vec(self) {
+    let this = Self {
+      bytecode: bytecode_cid,
+      state: state_cid,
+    };
+
+    let serialized = match to_vec(&this) {
       Ok(s) => s,
       Err(err) => abort!(
         USR_SERIALIZATION,
@@ -92,7 +96,7 @@ impl EVMContractState {
       serialized.as_slice(),
     ) {
       Ok(cid) => cid,
-      Err(_) => {
+      Err(err) => {
         abort!(USR_SERIALIZATION, "failed to store initial state: {err}")
       }
     };
@@ -101,10 +105,7 @@ impl EVMContractState {
       abort!(USR_ILLEGAL_STATE, "failed to initialize state root: {err}");
     }
 
-    Self {
-      bytecode: bytecode_cid,
-      state: state_cid,
-    }
+    this
   }
 
   pub fn load() -> Self {

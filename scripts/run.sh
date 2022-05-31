@@ -10,10 +10,10 @@ cargo build
 CID=$(lotus chain install-actor target/debug/wbuild/fil_actor_evm/fil_actor_evm.compact.wasm | sed -n 's,^Actor Code CID: ,,p')
 echo "CodeID: $CID"
 
-ADDRESS=$(lotus chain create-actor $CID | sed -n 's,^Robust Address: ,,p')
+CREATE_PARAMS=$(echo "EVM Bytecode - 123\c" | base64)
+ADDRESS=$(lotus chain create-actor $CID $CREATE_PARAMS | sed -n 's,^Robust Address: ,,p')
 echo "Actor Address: $ADDRESS"
 
-echo "invoking method 2.."
-PARAM=$(echo "test123\c" | base64)
-RETURN=$(lotus chain invoke $ADDRESS 2 $PARAM | tail -1 | base64 --decode)
+echo "invoking method get_bytecode.."
+RETURN=$(lotus chain invoke $ADDRESS 2 | tail -1 | base64 --decode)
 echo "Result: $RETURN"

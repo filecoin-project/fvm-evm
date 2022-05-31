@@ -15,7 +15,7 @@ pub fn invoke(params_ptr: u32) -> u32 {
   // Conduct method dispatch. Handle input parameters and return data.
   let ret: Option<RawBytes> = match message::method_number() {
     1 => constructor(params_ptr),
-    2 => hello_there(params_ptr),
+    2 => get_bytecode(),
     _ => abort!(USR_UNHANDLED_MESSAGE, "unrecognized method"),
   };
 
@@ -53,6 +53,7 @@ pub fn constructor(params_ptr: u32) -> Option<RawBytes> {
 
 pub fn get_bytecode() -> Option<RawBytes> {
   let state = EVMContractState::load();
+  Some(RawBytes::new(format!("evm state: {state:?}").into_bytes()))
 }
 
 pub fn hello_there(params_ptr: u32) -> Option<RawBytes> {
