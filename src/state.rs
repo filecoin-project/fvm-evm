@@ -59,16 +59,31 @@ impl Cbor for EVMContractState {}
 
 impl EVMContractState {
   pub fn new(bytecode: &impl AsRef<[u8]>) -> Self {
-    let bytecode_cid =
-      match ipld::put(Code::Blake2b256.into(), 32, DAG_CBOR, bytecode.as_ref())
-      {
-        Ok(cid) => cid,
-        Err(err) => abort!(
-          USR_SERIALIZATION,
-          "failed to store EVM contract bytecode: {err}"
-        ),
-      };
-    let state_cid = match Hamt::<Blockstore, String>::new(Blockstore).flush() {
+    let bytecode_cid = match ipld::put(
+      Code::Blake2b256.into(),
+      32,
+      DAG_CBOR,
+      to_vec(bytecode.as_ref()).unwrap().as_slice(),
+    ) {
+      Ok(cid) => cid,
+      Err(err) => abort!(
+        USR_SERIALIZATION,
+        "failed to store EVM contract bytecode: {err}"
+      ),
+    };
+
+    let mut state_dict = Hamt::<Blockstore, String, String>::new(Blockstore);
+
+    if let Err(err) =
+      state_dict.set("length".to_string(), bytecode.as_ref().len().to_string())
+    {
+      abort!(
+        USR_SERIALIZATION,
+        "failed to write initial state in state HAMT: {err}"
+      )
+    }
+
+    let state_cid = match state_dict.flush() {
       Ok(cid) => cid,
       Err(err) => abort!(
         USR_SERIALIZATION,
@@ -145,5 +160,17 @@ impl EVMContractState {
       abort!(USR_ILLEGAL_STATE, "failed to set root ciid: {:}", err);
     }
     cid
+  }
+
+  pub fn get_bytecode(&self) -> anyhow::Result<Option<Vec<u8>>> {
+    Blockstore.get_cbor::<Vec<u8>>(&self.bytecode)
+  }
+
+  pub fn get_length(&self) -> Result<Option<u32>, fvm_ipld_hamt::Error> {
+    let dict =
+      Hamt::<Blockstore, String, String>::load(&self.state, Blockstore)?;
+    dict
+      .get("length")
+      .map(|op| op.map(|s| s.parse::<u32>().unwrap()))
   }
 }

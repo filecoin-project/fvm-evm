@@ -53,7 +53,20 @@ pub fn constructor(params_ptr: u32) -> Option<RawBytes> {
 
 pub fn get_bytecode() -> Option<RawBytes> {
   let state = EVMContractState::load();
-  Some(RawBytes::new(format!("evm state: {state:?}").into_bytes()))
+  let toplevel = format!("evm state: {state:?}");
+
+  let bytecode = state.get_bytecode().unwrap().unwrap();
+  let bytecode_debug = format!("bytecode: {bytecode:?}");
+
+  let bytecode_string = String::from_utf8_lossy(&bytecode);
+  let bytecode_string = format!("bytecode string: {bytecode_string}");
+
+  let length = state.get_length().unwrap().unwrap();
+  let length_string = format!("HAMT-value[length]: {length}");
+
+  let output =
+    format!("{toplevel}\n{bytecode_debug}\n{bytecode_string}\n{length_string}");
+  Some(RawBytes::new(output.into_bytes()))
 }
 
 pub fn hello_there(params_ptr: u32) -> Option<RawBytes> {
