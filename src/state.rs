@@ -1,8 +1,9 @@
 use {
   crate::{abort::abort, storage::Blockstore},
   cid::{multihash::Code, Cid},
-  ethereum_types::U256,
+  core::slice::SlicePattern,
   fvm_ipld_encoding::{to_vec, Cbor, CborStore, DAG_CBOR},
+  fvm_ipld_hamt::Hamt,
   fvm_sdk::{ipld, sself},
   serde_tuple::{Deserialize_tuple, Serialize_tuple},
 };
@@ -19,7 +20,7 @@ pub struct Account {
 
   /// The number of wei owned by this address.
   /// Wei is a denomination of ETH and there are 1e+18 wei per ETH.
-  pub balance: U256,
+  pub balance: u64,
 
   /// This hash refers to the code of an account on the Ethereum virtual
   /// machine (EVM). Contract accounts have code fragments programmed in that
@@ -33,7 +34,7 @@ pub struct Account {
   ///
   /// For externally owned accounts, the codeHash field is the hash of an empty
   /// string.
-  pub code_hash: U256,
+  pub code_hash: u64,
 
   /// Also known as a storage hash.
   ///
@@ -45,41 +46,67 @@ pub struct Account {
   ///
   /// This trie encodes the hash of the storage contents of this account,
   /// and is empty by default.
-  pub storage_root: U256,
+  pub storage_root: u64,
 }
 
 /// The state object.
-#[derive(Debug, Default, Serialize_tuple, Deserialize_tuple)]
-pub struct State {
-  /// The state of all account headers of the system
-  ///
-  /// Hamt<Address, Account>
-  pub accounts: Cid,
-
-  /// For contract accounts, this map holds the EVM bytecode of
-  /// that contract. This value corresponds to the [`code_hash`] field
-  /// defined in the account header.
-  ///
-  /// The value is a CID that points to the EVM bytecode blob.
-  ///
-  /// Hamt<Cid, RawBytes>
-  pub bytecodes: Cid,
-
-  /// State held by individual contracts.
-  ///
-  /// The key is the address of the contracts that owns the state.
-  /// The value is a map of 256-bit int index and a 256-bit value.
-  ///
-  /// Hamt<H160, Hamt<U256, U256>>
-  pub contracts_state: Cid,
+#[derive(Debug, Serialize_tuple, Deserialize_tuple)]
+pub struct EVMContractState {
+  bytecode: Cid,
+  state: Cid,
 }
 
-impl Cbor for State {}
+impl Cbor for EVMContractState {}
 
-/// We should probably have a derive macro to mark an object as a state object,
-/// and have load and save methods automatically generated for them as part of a
-/// StateObject trait (i.e. impl StateObject for State).
-impl State {
+impl EVMContractState {
+  pub fn new(bytecode: &impl AsRef<[u8]>) -> Self {
+    let bytecode_cid =
+      match ipld::put(Code::Blake2b256.into(), 32, DAG_CBOR, bytecode.as_ref())
+      {
+        Ok(cid) => cid,
+        Err(err) => abort!(
+          USR_SERIALIZATION,
+          "failed to store EVM contract bytecode: {err}"
+        ),
+      };
+    let state_cid = match Hamt::<String, String>::new(Blockstore).flush() {
+      Ok(cid) => cid,
+      Err(err) => abort!(
+        USR_SERIALIZATION,
+        "failed to initialize EVM contract state HAMT: {err}"
+      ),
+    };
+
+    let serialized = match to_vec(self) {
+      Ok(s) => s,
+      Err(err) => abort!(
+        USR_SERIALIZATION,
+        "failed to serialize initial state: {err}"
+      ),
+    };
+
+    let root_cid = match ipld::put(
+      Code::Blake2b256.into(),
+      32,
+      DAG_CBOR,
+      serialized.as_slice(),
+    ) {
+      Ok(cid) => cid,
+      Err(_) => {
+        abort!(USR_SERIALIZATION, "failed to store initial state: {err}")
+      }
+    };
+
+    if let Err(err) = sself::set_root(&root_cid) {
+      abort!(USR_ILLEGAL_STATE, "failed to initialize state root: {err}");
+    }
+
+    Self {
+      bytecode: bytecode_cid,
+      state: state_cid,
+    }
+  }
+
   pub fn load() -> Self {
     // First, load the current state root.
     let root = match sself::root() {

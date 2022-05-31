@@ -7,15 +7,15 @@ use {
   fvm_ipld_encoding::{RawBytes, DAG_CBOR},
   fvm_sdk::{ipld, message, NO_DATA_BLOCK_ID},
   fvm_shared::ActorID,
-  state::State,
+  state::EVMContractState,
 };
 
 #[no_mangle]
-pub fn invoke(_: u32) -> u32 {
+pub fn invoke(params_ptr: u32) -> u32 {
   // Conduct method dispatch. Handle input parameters and return data.
   let ret: Option<RawBytes> = match message::method_number() {
-    1 => constructor(),
-    2 => todo!(), // send_message
+    1 => constructor(params_ptr),
+    2 => hello_there(params_ptr),
     _ => abort!(USR_UNHANDLED_MESSAGE, "unrecognized method"),
   };
 
@@ -32,76 +32,44 @@ pub fn invoke(_: u32) -> u32 {
   }
 }
 
-pub fn constructor() -> Option<RawBytes> {
-  // This constant should be part of the SDK.
+pub fn constructor(params_ptr: u32) -> Option<RawBytes> {
   const INIT_ACTOR_ADDR: ActorID = 1;
-
-  // Should add SDK sugar to perform ACL checks more succinctly.
-  // i.e. the equivalent of the validate_* builtin-actors runtime methods.
-  // https://github.com/filecoin-project/builtin-actors/blob/master/actors/runtime/src/runtime/fvm.rs#L110-L146
   if message::caller() != INIT_ACTOR_ADDR {
     abort!(USR_FORBIDDEN, "constructor invoked by non-init actor");
   }
 
-  let state = State::default();
+  let (codec, bytes) = fvm_sdk::message::params_raw(params_ptr).unwrap();
+  if codec != DAG_CBOR {
+    abort!(
+      USR_SERIALIZATION,
+      "invalid input format, expected DAG-CBOR, got {codec}"
+    );
+  }
+
+  let state = EVMContractState::new(&bytes);
   state.save();
-  None
+  Some(RawBytes::new(b"EVM Constructor called!".to_vec()))
+}
+
+pub fn get_bytecode() -> Option<RawBytes> {
+  let state = EVMContractState::load();
+}
+
+pub fn hello_there(params_ptr: u32) -> Option<RawBytes> {
+  let (codec, bytes) = fvm_sdk::message::params_raw(params_ptr).unwrap();
+  if codec != DAG_CBOR {
+    abort!(
+      USR_SERIALIZATION,
+      "invalid input format, expected DAG-CBOR, got {codec}"
+    );
+  }
+
+  let logmsg = format!("codec: {codec} (DAG-CBOR), bytes: {bytes:?}");
+  let param_string = String::from_utf8(bytes);
+  Some(RawBytes::new(
+    format!("params: {logmsg} [string: {param_string:?}]").into_bytes(),
+  ))
 }
 
 #[cfg(test)]
-mod tests {
-  use {
-    ethereum_types::{Address, U256},
-    evmodin::{
-      host::DummyHost,
-      tracing::NoopTracer,
-      util::Bytecode,
-      AnalyzedCode,
-      CallKind,
-      Message,
-      Output,
-      Revision,
-      StatusCode,
-    },
-  };
-
-  #[test]
-  fn evmodin_smoke_test() {
-    let code = Bytecode::new()
-      .mstore8_value(0, b'h')
-      .mstore8_value(1, b'e')
-      .mstore8_value(2, b'l')
-      .mstore8_value(3, b'l')
-      .mstore8_value(4, b'o')
-      .ret(0, 5)
-      .build();
-
-    let message = Message {
-      kind: CallKind::Call,
-      is_static: true,
-      depth: 0,
-      gas: 200,
-      recipient: Address::zero(),
-      code_address: Address::zero(),
-      sender: Address::zero(),
-      input_data: vec![].into(),
-      value: U256::zero(),
-    };
-
-    assert_eq!(
-      AnalyzedCode::analyze(code).execute(
-        &mut DummyHost,
-        &mut NoopTracer,
-        None,
-        message,
-        Revision::latest()
-      ),
-      Output {
-        status_code: StatusCode::Success,
-        gas_left: 146,
-        output_data: b"hello".to_vec().into(),
-        create_address: None,
-      }
-    )
-  }
-}
+mod tests {}

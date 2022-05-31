@@ -20,9 +20,24 @@ serde_tuple = "0.5"
 anyhow = "1.0"
 
 # Ethereum VM support types
-ethereum-types = { version = "0.12", features = ["impl-serde"] }
-evmodin = { git = "https://github.com/vorot93/evmodin.git", features = ["util"] }
+# ethereum-types = { version = "0.12", features = ["impl-serde"] }
+# evmodin = { git = "https://github.com/karim-agha/evmodin.git", features = [
+#   "util",
+# ] }
+
+
+[dev-dependencies]
+fvm = { version = "1.0.0-rc.1", git = "https://github.com/filecoin-project/ref-fvm" }
+fvm_sdk = { version = "1.0.0-rc.1", git = "https://github.com/filecoin-project/ref-fvm"  }
+libsecp256k1 = { version = "0.7" }
+rand = "0.8"
+rand_chacha = "0.3"
+anyhow = "1.0.52"
+wasmtime = "0.37.0"
 
 [build-dependencies]
 wasm-builder = "3.0.1"
 wasmtime = "0.37"
+
+# [workspace]
+# members = [".", "simulator"]
