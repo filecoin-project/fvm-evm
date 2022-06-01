@@ -8,7 +8,7 @@ construct_uint! { pub struct U256(4); } // ethereum word size
 construct_uint! { pub struct U512(8); } // used for addmod and mulmod opcodes
 
 construct_fixed_hash! { pub struct H160(20); } // ethereum address
-construct_fixed_hash! { pub struct H256(32); } // state map address
+construct_fixed_hash! { pub struct H256(32); } // Keccak256
 
 // make ETH uints serde serializable,
 // so it can work with Hamt and other

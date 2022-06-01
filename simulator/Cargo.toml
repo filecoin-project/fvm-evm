@@ -7,4 +7,10 @@ authors = ["Protocol Labs", "Filecoin Core Devs"]
 keywords = ["filecoin", "web3", "wasm", "evm"]
 
 [dependencies]
+clap = "3.1"
+anyhow = "1"
+cid = { version = "0.8.5", default-features = false }
+fvm = { version = "1.0.0-rc.2", git = "https://github.com/filecoin-project/ref-fvm", default-features = false }
+fvm_shared = { version = "0.7.0", git = "https://github.com/filecoin-project/ref-fvm" }
+fvm_ipld_blockstore = { version = "0.1.1", git = "https://github.com/filecoin-project/ref-fvm" }
 fvm_integration_tests = { version = "0.1", git = "https://github.com/filecoin-project/ref-fvm" }

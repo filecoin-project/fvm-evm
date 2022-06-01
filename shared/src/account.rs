@@ -1,6 +1,4 @@
-use fvm_shared::address::Address as FileCoinAddress;
-
-use crate::U256;
+use {crate::U256, fvm_shared::address::Address as FileCoinAddress};
 
 pub enum AccountKind {
   /// A user account controlled by a private key.
