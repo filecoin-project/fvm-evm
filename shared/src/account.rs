@@ -1,5 +1,11 @@
-use {crate::U256, fvm_shared::address::Address as FileCoinAddress};
+use {
+  crate::U256,
+  fvm_shared::address::Address as FileCoinAddress,
+  serde::{Deserialize, Serialize},
+  serde_tuple::{Deserialize_tuple, Serialize_tuple},
+};
 
+#[derive(Debug, Serialize, Deserialize)]
 pub enum AccountKind {
   /// A user account controlled by a private key.
   ///
@@ -14,6 +20,12 @@ pub enum AccountKind {
   /// Has state and bytecode but no corresponding private key.
   /// Not linked to a FIL account.
   Contract,
+}
+
+impl Default for AccountKind {
+  fn default() -> Self {
+    Self::ExternallyOwned { fil_account: None }
+  }
 }
 
 /// Represents an account in the EVM world addressable by a 160 bit address.
@@ -32,6 +44,7 @@ pub enum AccountKind {
 /// If an account is a contract account, then it may be linked to an FVM
 /// account that is an Actor object constructed with the contract bytecode
 /// and has its CodeCID equal to the runtime wasm bytecode.
+#[derive(Debug, Default, Serialize_tuple, Deserialize_tuple)]
 pub struct EthereumAccount {
   /// For EOA it could be this value of the FIL account nonce,
   /// whichever is greater. If this account is not linked to a FIL

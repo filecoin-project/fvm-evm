@@ -10,6 +10,7 @@ use {
     state::StateTreeVersion,
     version::NetworkVersion,
   },
+  std::fs,
 };
 #[derive(Debug, Parser)]
 struct Input {
@@ -24,7 +25,7 @@ fn configure_registry_actor<B: Blockstore>(
   args: &Input,
   _simulator: &mut Tester<B>,
 ) -> Result<Address> {
-  let _registry_wasm = std::fs::read(&args.registry)?;
+  let _registry_wasm = fs::read(&args.registry)?;
   let actor_address = Address::new_id(10000);
 
   Ok(actor_address)

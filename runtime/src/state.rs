@@ -23,6 +23,7 @@ pub struct ContractState {
   /// HAMT<U256, U256>
   state: Cid,
 }
+
 impl Cbor for ContractState {}
 
 impl ContractState {

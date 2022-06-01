@@ -7,6 +7,8 @@ authors = ["Protocol Labs", "Filecoin Core Devs"]
 keywords = ["filecoin", "web3", "wasm", "evm"]
 
 [dependencies]
+serde_tuple = "0.5"
+serde = { version = "1.0", features = ["derive"] }
 fvm_ipld_hamt = "0.5.1"
 cid = { version = "0.8.5", default-features = false }
 uint = { version = "0.9.3", default-features = false }
