@@ -5,7 +5,7 @@ use {
   serde_tuple::{Deserialize_tuple, Serialize_tuple},
 };
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum AccountKind {
   /// A user account controlled by a private key.
   ///
@@ -44,7 +44,9 @@ impl Default for AccountKind {
 /// If an account is a contract account, then it may be linked to an FVM
 /// account that is an Actor object constructed with the contract bytecode
 /// and has its CodeCID equal to the runtime wasm bytecode.
-#[derive(Debug, Default, Serialize_tuple, Deserialize_tuple)]
+#[derive(
+  Debug, Clone, Copy, Default, PartialEq, Serialize_tuple, Deserialize_tuple,
+)]
 pub struct EthereumAccount {
   /// For EOA it could be this value of the FIL account nonce,
   /// whichever is greater. If this account is not linked to a FIL
