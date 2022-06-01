@@ -1,0 +1,10 @@
+[package]
+name = "simulator"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Protocol Labs", "Filecoin Core Devs"]
+keywords = ["filecoin", "web3", "wasm", "evm"]
+
+[dependencies]
+fvm_integration_tests = { version = "0.1", git = "https://github.com/filecoin-project/ref-fvm" }

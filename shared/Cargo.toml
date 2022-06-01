@@ -1,0 +1,15 @@
+[package]
+name = "fvm-evm"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Protocol Labs", "Filecoin Core Devs"]
+keywords = ["filecoin", "web3", "wasm", "evm"]
+
+[dependencies]
+fvm_ipld_hamt = "0.5.1"
+cid = { version = "0.8.5", default-features = false }
+uint = { version = "0.9.3", default-features = false }
+impl-serde = { version = "0.3.2", default-features = false }
+fixed-hash = { version = "0.7.0", default-features = false }
+fvm_shared = { version = "0.7.0", git = "https://github.com/filecoin-project/ref-fvm" }
