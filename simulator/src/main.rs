@@ -5,7 +5,7 @@ use {
   fvm_evm::{EthereumAccount, H160, U256},
   fvm_integration_tests::tester::{Account, Tester},
   fvm_ipld_blockstore::MemoryBlockstore,
-  fvm_ipld_encoding::{from_slice, to_vec, RawBytes},
+  fvm_ipld_encoding::{from_slice, RawBytes},
   fvm_shared::{
     address::Address,
     bigint::{BigInt, Zero},
@@ -100,15 +100,13 @@ fn main() -> Result<()> {
           ..Default::default()
         };
 
-        let upsert_params = to_vec(&(eth_addr, eth_acc)).unwrap();
-
         // send upsert message
         let message = Message {
           from: sender[0].1,
           to: registry_actor_address,
           gas_limit: 1000000000,
           method_num: 3, // upsert
-          params: RawBytes::new(upsert_params),
+          params: RawBytes::serialize(&(eth_addr, eth_acc)).unwrap(),
           ..Message::default()
         };
 
@@ -118,15 +116,13 @@ fn main() -> Result<()> {
 
         println!("upsert ret: {ret:#?}");
 
-        let retreive_params = to_vec(&eth_addr).unwrap();
-
         // send retreive message
         let message = Message {
           from: sender[0].1,
           to: registry_actor_address,
           gas_limit: 1000000000,
           method_num: 2, // retreive
-          params: RawBytes::new(retreive_params),
+          params: RawBytes::serialize(&eth_addr).unwrap(),
           sequence: 1,
           ..Message::default()
         };
