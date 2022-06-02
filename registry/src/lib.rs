@@ -32,7 +32,7 @@ pub fn invoke(params_ptr: u32) -> u32 {
   }
 }
 
-pub fn constructor() -> Option<RawBytes> {
+fn constructor() -> Option<RawBytes> {
   const INIT_ACTOR_ADDR: ActorID = 1;
   if message::caller() != INIT_ACTOR_ADDR {
     abort!(USR_FORBIDDEN, "constructor invoked by non-init actor");
@@ -54,7 +54,7 @@ pub fn constructor() -> Option<RawBytes> {
   None
 }
 
-pub fn upsert(params_ptr: u32) -> Option<RawBytes> {
+fn upsert(params_ptr: u32) -> Option<RawBytes> {
   let mut dict = load_global_hamt();
   let (eth_address, account) = decode_params(params_ptr);
 
@@ -75,7 +75,7 @@ pub fn upsert(params_ptr: u32) -> Option<RawBytes> {
   None
 }
 
-pub fn retreive(params_ptr: u32) -> Option<RawBytes> {
+fn retreive(params_ptr: u32) -> Option<RawBytes> {
   let dict = load_global_hamt();
   let eth_address = decode_params(params_ptr);
 

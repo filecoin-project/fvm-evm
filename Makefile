@@ -1,13 +1,13 @@
 RUSTFLAGS="-C target-feature=+crt-static"
 
-all: build
+all: copy
 .PHONY: all
 
-build: copy
+build:
 	cargo build
 .PHONY: build
 
-copy: 
+copy: build
 	@mkdir -p wasm && \
 	 cp target/debug/wbuild/fvm-evm-registry/fvm_evm_registry.compact.wasm wasm/fvm_evm_registry.compact.wasm && \
 	 cp target/debug/wbuild/fvm-evm-runtime/fvm_evm_runtime.compact.wasm wasm/fvm_evm_runtime.compact.wasm 
@@ -15,8 +15,10 @@ copy:
 clean:
 	@rm -rf target && cargo clean
 
-test:
-	cargo test
+test: copy
+	@target/debug/simulator \
+		--registry wasm/fvm_evm_registry.compact.wasm \
+		--runtime wasm/fvm_evm_runtime.compact.wasm
 
 lint: clean
 	cargo fmt --all
