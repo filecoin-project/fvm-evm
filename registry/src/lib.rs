@@ -1,137 +1,148 @@
 use {
+  fil_actors_runtime::{
+    actor_error,
+    runtime::{ActorCode, Runtime},
+    ActorError,
+    INIT_ACTOR_ADDR,
+  },
   fvm_evm::{abort, EthereumAccount, H160},
-  fvm_ipld_encoding::{from_slice, to_vec, RawBytes, DAG_CBOR},
-  fvm_sdk::{ipld, message, sself, NO_DATA_BLOCK_ID},
-  fvm_shared::ActorID,
-  serde::Deserialize,
-  store::Blockstore,
+  fvm_ipld_blockstore::Blockstore,
+  fvm_ipld_encoding::{from_slice, RawBytes},
+  fvm_ipld_hamt::Hamt,
+  fvm_sdk::sself,
+  fvm_shared::{MethodNum, METHOD_CONSTRUCTOR},
+  num_derive::FromPrimitive,
+  num_traits::FromPrimitive,
 };
 
-mod store;
+#[cfg(feature = "fil-actor")]
+fil_actors_runtime::wasm_trampoline!(RegistryActor);
 
-// mapping of EVM addresses HASH(Pubkey) -> EthAccount metadata
-type Hamt = fvm_ipld_hamt::Hamt<Blockstore, EthereumAccount, H160>;
-
-#[no_mangle]
-pub fn invoke(params_ptr: u32) -> u32 {
-  let ret: Option<RawBytes> = match message::method_number() {
-    1 => constructor(),
-    2 => retreive(params_ptr),
-    3 => upsert(params_ptr),
-    _ => abort!(USR_UNHANDLED_MESSAGE, "unrecognized method"),
-  };
-
-  match ret {
-    None => NO_DATA_BLOCK_ID,
-    Some(v) => match ipld::put_block(DAG_CBOR, v.bytes()) {
-      Ok(id) => id,
-      Err(err) => {
-        abort!(USR_SERIALIZATION, "failed to store return value: {}", err)
-      }
-    },
-  }
+#[derive(FromPrimitive)]
+#[repr(u64)]
+pub enum Method {
+  Constructor = METHOD_CONSTRUCTOR,
+  RetreiveAccount = 2,
+  UpsertAccount = 3,
 }
 
-fn constructor() -> Option<RawBytes> {
-  const INIT_ACTOR_ADDR: ActorID = 1;
-  if message::caller() != INIT_ACTOR_ADDR {
-    abort!(USR_FORBIDDEN, "constructor invoked by non-init actor");
-  }
+pub struct RegistryActor;
+impl RegistryActor {
+  pub fn constructor<BS, RT>(rt: &mut RT) -> Result<(), ActorError>
+  where
+    BS: Blockstore,
+    RT: Runtime<BS>,
+  {
+    rt.validate_immediate_caller_is(std::iter::once(&*INIT_ACTOR_ADDR))?;
 
-  // initialize an empty dictionary
-  let state_root = match Hamt::new(Blockstore).flush() {
-    Ok(cid) => cid,
-    Err(err) => abort!(
-      USR_SERIALIZATION,
-      "failed to initialize EVM contract state HAMT: {err}"
-    ),
-  };
+    let empty_map_cid = Hamt::<_, EthereumAccount, H160>::new(rt.store())
+      .flush()
+      .map_err(|e| {
+        ActorError::illegal_state(format!("Failed to create empty map: {e}"))
+      })?;
 
-  if let Err(err) = sself::set_root(&state_root) {
-    abort!(USR_ILLEGAL_STATE, "failed to initialize state root: {err}");
-  }
-
-  None
-}
-
-fn upsert(params_ptr: u32) -> Option<RawBytes> {
-  let mut dict = load_global_hamt();
-  let (eth_address, account) = decode_params(params_ptr);
-
-  // create or update the eth address entry
-  if let Err(e) = dict.set(eth_address, account) {
-    abort!(USR_ILLEGAL_STATE, "failed to save eth address: {e}");
-  }
-
-  match dict.flush() {
-    Ok(cid) => {
-      if let Err(e) = sself::set_root(&cid) {
-        abort!(USR_ILLEGAL_STATE, "failed to update state root: {e}");
-      }
+    if let Err(err) = sself::set_root(&empty_map_cid) {
+      abort!(USR_ILLEGAL_STATE, "failed to initialize state root: {err}");
     }
-    Err(e) => abort!(USR_ILLEGAL_STATE, "failed to update hamt: {e}"),
+
+    Ok(())
   }
 
-  None
-}
+  pub fn upsert<BS, RT>(
+    rt: &mut RT,
+    address: H160,
+    account: EthereumAccount,
+  ) -> Result<(), ActorError>
+  where
+    BS: Blockstore,
+    RT: Runtime<BS>,
+  {
+    rt.validate_immediate_caller_accept_any()?;
 
-fn retreive(params_ptr: u32) -> Option<RawBytes> {
-  let dict = load_global_hamt();
-  let eth_address = decode_params(params_ptr);
+    let mut dict = load_global_map(rt)?;
 
-  let acc = match dict.get(&eth_address) {
-    Ok(acc) => match acc {
+    dict
+      .set(address, account)
+      .map_err(|e| ActorError::illegal_argument(e.to_string()))?;
+
+    let new_root = dict
+      .flush()
+      .map_err(|e| ActorError::illegal_state(e.to_string()))?;
+
+    sself::set_root(&new_root)
+      .map_err(|e| ActorError::illegal_state(e.to_string()))?;
+
+    Ok(())
+  }
+
+  pub fn retreive<BS, RT>(
+    rt: &mut RT,
+    address: H160,
+  ) -> Result<EthereumAccount, ActorError>
+  where
+    BS: Blockstore,
+    RT: Runtime<BS>,
+  {
+    rt.validate_immediate_caller_accept_any()?;
+
+    let dict = load_global_map(rt)?;
+
+    let account = dict
+      .get(&address)
+      .map_err(|e| ActorError::illegal_argument(e.to_string()))?;
+
+    Ok(match account {
       // account exists, returns its contents.
-      Some(existing) => *existing,
+      Some(acc) => *acc,
 
       // account does not exist, ethereum then synthesizes an empty
       // account with zero balance, zero nonce, and everything else
       // zeroed out.
       None => EthereumAccount::default(),
-    },
-    Err(err) => {
-      abort!(USR_ILLEGAL_STATE, "failed to query for eth address: {err}")
+    })
+  }
+}
+
+impl ActorCode for RegistryActor {
+  fn invoke_method<BS, RT>(
+    rt: &mut RT,
+    method: MethodNum,
+    params: &RawBytes,
+  ) -> Result<RawBytes, ActorError>
+  where
+    BS: Blockstore + Clone,
+    RT: Runtime<BS>,
+  {
+    match FromPrimitive::from_u64(method) {
+      Some(Method::Constructor) => {
+        Self::constructor(rt)?;
+        Ok(RawBytes::default())
+      }
+      Some(Method::RetreiveAccount) => {
+        let address = from_slice(&params)?;
+        let account = Self::retreive(rt, address)?;
+        Ok(RawBytes::serialize(account)?)
+      }
+      Some(Method::UpsertAccount) => {
+        let (address, account) = from_slice(&params)?;
+        Self::upsert(rt, address, account)?;
+        Ok(RawBytes::default())
+      }
+      None => Err(actor_error!(unhandled_message; "Invalid method")),
     }
-  };
-
-  Some(match to_vec(&acc) {
-    Ok(val) => RawBytes::new(val),
-    Err(err) => abort!(
-      USR_SERIALIZATION,
-      "failed to serialize account metadata: {err}"
-    ),
-  }) // dag-cbor serialize
-}
-
-fn load_global_hamt() -> Hamt {
-  let root_cid = match sself::root() {
-    Ok(cid) => cid,
-    Err(err) => abort!(USR_ILLEGAL_STATE, "failed to get state root: {err:?}"),
-  };
-
-  match Hamt::load(&root_cid, Blockstore) {
-    Ok(dict) => dict,
-    Err(err) => abort!(USR_ILLEGAL_STATE, "failed to load hamt: {err}"),
   }
 }
 
-fn decode_params<D>(params_ptr: u32) -> D
+fn load_global_map<BS, RT>(
+  rt: &mut RT,
+) -> Result<Hamt<&BS, EthereumAccount, H160>, ActorError>
 where
-  D: for<'d> Deserialize<'d>,
+  BS: Blockstore,
+  RT: Runtime<BS>,
 {
-  match message::params_raw(params_ptr) {
-    Ok((codec, bytes)) => match codec {
-      DAG_CBOR => match from_slice(&bytes) {
-        Ok(val) => val,
-        Err(err) => {
-          abort!(USR_SERIALIZATION, "failed to deserialize params: {err}")
-        }
-      },
-      _ => abort!(
-        USR_ILLEGAL_ARGUMENT,
-        "invalid parameter codec {codec}. Expecting DAG-CBOR"
-      ),
-    },
-    Err(err) => abort!(USR_ILLEGAL_ARGUMENT, "invalid parameter: {err:?}"),
-  }
+  Hamt::<_, EthereumAccount, H160>::load(
+    &sself::root().map_err(|e| ActorError::not_found(e.to_string()))?,
+    rt.store(),
+  )
+  .map_err(|e| ActorError::illegal_state(e.to_string()))
 }
