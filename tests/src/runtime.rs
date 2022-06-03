@@ -8,7 +8,7 @@ use {
   },
   anyhow::Result,
   fvm_evm::{EthereumAccount, H160, U256},
-  fvm_ipld_encoding::{from_slice, RawBytes},
+  fvm_ipld_encoding::{from_slice, to_vec, RawBytes},
 };
 
 #[test]
@@ -33,7 +33,7 @@ fn cross_contract_smoke() -> Result<()> {
   let output = construct_actor(
     &mut tester, //
     RUNTIME_ACTOR_ADDRESS,
-    RawBytes::serialize(&runtime_params)?,
+    RawBytes::new(to_vec(&runtime_params)?),
   )?;
 
   // runtime constructor returns nothing
@@ -56,15 +56,14 @@ fn cross_contract_smoke() -> Result<()> {
   // invoke a runtime method that invokes
   // the registry and creates a new entry
   // for the zero address.
-  let output = from_slice(&invoke_actor(
+  let output = invoke_actor(
     &mut tester,
     accounts[0].1,
     RUNTIME_ACTOR_ADDRESS,
     CONSTRUCT_ZERO_ACCOUNT_NUM,
     RawBytes::default(),
     1,
-  )?)?;
-
+  )?;
   assert_eq!(RawBytes::default(), output);
 
   // now query again, it should have the inserted value

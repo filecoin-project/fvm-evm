@@ -63,8 +63,9 @@ impl EvmRuntimeActor {
       ..Default::default()
     };
 
-    const UPSERT_METHOD_NUM: u64 = 2;
-    let params = RawBytes::serialize(&(eth_addr, eth_acc))
+    const UPSERT_METHOD_NUM: u64 = 3;
+
+    let params = RawBytes::serialize((eth_addr, eth_acc))
       .map_err(|e| ActorError::illegal_argument(e.to_string()))?;
 
     // register new address through cross-contract call
@@ -97,6 +98,7 @@ impl ActorCode for EvmRuntimeActor {
       }
       Some(Method::CreateZeroAddress) => {
         Self::create_zero_address(rt)?;
+        fvm_sdk::debug::log(format!("created zero address"));
         Ok(RawBytes::default())
       }
       None => Err(actor_error!(unhandled_message; "Invalid method")),
