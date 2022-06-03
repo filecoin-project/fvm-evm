@@ -16,9 +16,7 @@ clean:
 	@rm -rf target && cargo clean
 
 test: copy
-	@target/debug/simulator \
-		--registry wasm/fvm_evm_registry.compact.wasm \
-		--runtime wasm/fvm_evm_runtime.compact.wasm
+	cargo test
 
 lint: clean
 	cargo fmt --all

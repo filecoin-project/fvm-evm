@@ -34,7 +34,7 @@ impl RegistryActor {
     RT: Runtime<BS>,
   {
     rt.validate_immediate_caller_is(std::iter::once(&*INIT_ACTOR_ADDR))?;
-
+    
     let empty_map_cid = Hamt::<_, EthereumAccount, H160>::new(rt.store())
       .flush()
       .map_err(|e| {
