@@ -20,7 +20,7 @@ In the root of the project execute the following command:
 $ make test
 ```
 
-It will run unit tests as a native rust binary. Some divergence between the machine-native unit tests and the logic in the resulting wasm are possible due to various conditional compilations targetting different platforms (e.g. The `getrandom` crate).
+it will compile all actors to wasm and then run them inside a simulated FVM environment and excercise all test cases.
 
 ## Design Choices
 
