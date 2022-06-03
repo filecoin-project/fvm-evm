@@ -8,6 +8,9 @@ use {
 #[cfg(test)]
 mod registry;
 
+#[cfg(test)]
+mod runtime;
+
 use {
   anyhow::Result,
   fvm_integration_tests::tester::Tester,
@@ -54,16 +57,16 @@ pub fn create_tester<const N: usize>(
   let state_root = tester.set_state(&empty_state)?;
 
   tester.set_actor_from_bin(
-    &registry_actor_wasm,
+    &runtime_actor_wasm,
     state_root,
-    REGISTRY_ACTOR_ADDRESS,
+    RUNTIME_ACTOR_ADDRESS,
     BigInt::zero(),
   )?;
 
   tester.set_actor_from_bin(
-    &runtime_actor_wasm,
+    &registry_actor_wasm,
     state_root,
-    RUNTIME_ACTOR_ADDRESS,
+    REGISTRY_ACTOR_ADDRESS,
     BigInt::zero(),
   )?;
 
@@ -117,8 +120,9 @@ pub fn send_message(
         ret.msg_receipt.return_data
       } else {
         return Err(anyhow::anyhow!(
-          "message failed with exit code {}",
-          ret.msg_receipt.exit_code
+          "message failed with exit code {} ({:?})",
+          ret.msg_receipt.exit_code,
+          ret.failure_info
         ));
       }
     }

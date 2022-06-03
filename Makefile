@@ -16,7 +16,7 @@ clean:
 	@rm -rf target && cargo clean
 
 test: copy
-	cargo test
+	cargo test -- --show-output
 
 lint: clean
 	cargo fmt --all
