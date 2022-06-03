@@ -10,7 +10,7 @@ In the root of the project execute the following command:
 $ make
 ```
 
-It should produce a wasm binary in `./target/debug/wbuild/fil_actor_evm/fil_actor_evm.compact.wasm` that containst the EVM runtime actor in optimized release mode.
+It should produce a wasm binary in `./wasm/fil_actor_evm.compact.wasm` that containst the EVM runtime actor in optimized release mode.
 
 ## Running tests
 
