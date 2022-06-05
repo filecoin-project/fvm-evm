@@ -6,6 +6,9 @@ license = "MIT OR Apache-2.0"
 authors = ["Protocol Labs", "Filecoin Core Devs"]
 keywords = ["filecoin", "web3", "wasm", "evm"]
 
+[lib]
+doctest = false
+
 [dependencies]
 cid = { version = "0.8.5", default-features = false }
 multihash = { version = "0.16.2", default-features = false }
