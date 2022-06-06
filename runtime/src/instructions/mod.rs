@@ -1,7 +1,8 @@
-mod arithmetic;
-mod bitwise;
-mod boolean;
-mod call;
-mod control;
-mod external;
-mod memory;
+pub mod arithmetic;
+pub mod bitwise;
+pub mod boolean;
+pub mod call;
+pub mod control;
+pub mod external;
+pub mod manip;
+pub mod memory;

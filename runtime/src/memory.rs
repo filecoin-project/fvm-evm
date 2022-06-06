@@ -25,3 +25,16 @@ impl Memory {
     self.0.resize(size, 0);
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn grow() {
+    let mut mem = Memory::default();
+    mem.grow(PAGE_SIZE * 2 + 1);
+    assert_eq!(mem.len(), PAGE_SIZE * 2 + 1);
+    assert_eq!(mem.capacity(), PAGE_SIZE * 3);
+  }
+}

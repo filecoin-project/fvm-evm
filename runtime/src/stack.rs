@@ -57,3 +57,24 @@ impl Stack {
     self.0.swap(top, pos);
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn stack() {
+    let mut stack = Stack::default();
+
+    let items: [u128; 4] = [0xde, 0xad, 0xbe, 0xef];
+
+    for (i, item) in items.iter().copied().enumerate() {
+      stack.push(item.into());
+      assert_eq!(stack.len(), i + 1);
+    }
+
+    assert_eq!(*stack.get(2), U256::from(0xad));
+    assert_eq!(stack.pop(), U256::from(0xef));
+    assert_eq!(*stack.get(2), U256::from(0xde));
+  }
+}

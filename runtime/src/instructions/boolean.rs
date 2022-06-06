@@ -1,4 +1,8 @@
-use {crate::stack::Stack, fvm_evm::U256};
+use {
+  crate::stack::Stack,
+  fvm_evm::{uints::i256_cmp, U256},
+  std::cmp::Ordering,
+};
 
 #[inline]
 pub fn lt(stack: &mut Stack) {
@@ -14,6 +18,30 @@ pub fn gt(stack: &mut Stack) {
   let b = stack.get_mut(0);
 
   *b = if a.gt(b) { U256::from(1) } else { U256::zero() }
+}
+
+#[inline]
+pub(crate) fn slt(stack: &mut Stack) {
+  let a = stack.pop();
+  let b = stack.get_mut(0);
+
+  *b = if i256_cmp(a, *b) == Ordering::Less {
+    U256::from(1)
+  } else {
+    U256::zero()
+  }
+}
+
+#[inline]
+pub(crate) fn sgt(stack: &mut Stack) {
+  let a = stack.pop();
+  let b = stack.get_mut(0);
+
+  *b = if i256_cmp(a, *b) == Ordering::Greater {
+    U256::from(1)
+  } else {
+    U256::zero()
+  }
 }
 
 #[inline]

@@ -1,11 +1,17 @@
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+//! EVM Opcodes as of Berlin Hard Fork
+//!
+//! On filecoin we will never have to replay blocks that are older
+//! than the release date of the FVM-EVM runtime, so supporting
+//! historic behavior is not needed.
+
+#[derive(Clone, Copy, Debug)]
 pub struct OpCode {
   /// the byte representing the opcode in binary
   pub code: u8,
 
-  /// cot of executing the opcode, subtracted from the
+  /// cost of executing the opcode, subtracted from the
   /// total gas limit when running bytecode.
-  pub gas_cost: u16,
+  pub price: u16,
 
   /// The number of stack items the instruction accesses during execution.
   pub stack_height_required: u8,
@@ -30,1007 +36,1017 @@ impl OpCode {
   }
 }
 
+impl PartialEq<u8> for OpCode {
+  fn eq(&self, other: &u8) -> bool {
+    self.code == *other
+  }
+}
+
+const COLD_SLOAD_COST: u16 = 2100;
+const COLD_ACCOUNT_ACCESS_COST: u16 = 2600;
+const WARM_STORAGE_READ_COST: u16 = 100;
+
 impl OpCode {
   pub const ADD: OpCode = OpCode {
     code: 0x01,
-    gas_cost: todo!(),
+    price: 3,
     stack_height_required: 2,
     stack_height_change: -1,
     name: "ADD",
   };
   pub const ADDMOD: OpCode = OpCode {
     code: 0x08,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 8,
+    stack_height_required: 3,
+    stack_height_change: -2,
+    name: "ADDMOD",
   };
   pub const ADDRESS: OpCode = OpCode {
     code: 0x30,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "ADDRESS",
   };
   pub const AND: OpCode = OpCode {
     code: 0x16,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "AND",
   };
   pub const BALANCE: OpCode = OpCode {
     code: 0x31,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: WARM_STORAGE_READ_COST,
+    stack_height_required: 1,
+    stack_height_change: 0,
+    name: "BALANCE",
   };
   pub const BASEFEE: OpCode = OpCode {
     code: 0x48,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "BASEFEE",
   };
   pub const BLOCKHASH: OpCode = OpCode {
     code: 0x40,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 20,
+    stack_height_required: 1,
+    stack_height_change: 0,
+    name: "BLOCKHASH",
   };
   pub const BYTE: OpCode = OpCode {
     code: 0x1a,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "BYTE",
   };
   pub const CALL: OpCode = OpCode {
     code: 0xf1,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: WARM_STORAGE_READ_COST,
+    stack_height_required: 7,
+    stack_height_change: -6,
+    name: "CALL",
   };
   pub const CALLCODE: OpCode = OpCode {
     code: 0xf2,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: WARM_STORAGE_READ_COST,
+    stack_height_required: 7,
+    stack_height_change: -6,
+    name: "CALLCODE",
   };
   pub const CALLDATACOPY: OpCode = OpCode {
     code: 0x37,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 3,
+    stack_height_change: -3,
+    name: "CALLDATACOPY",
   };
   pub const CALLDATALOAD: OpCode = OpCode {
     code: 0x35,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 1,
+    stack_height_change: 0,
+    name: "CALLDATALOAD",
   };
   pub const CALLDATASIZE: OpCode = OpCode {
     code: 0x36,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "CALLDATASIZE",
   };
   pub const CALLER: OpCode = OpCode {
     code: 0x33,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "CALLER",
   };
   pub const CALLVALUE: OpCode = OpCode {
     code: 0x34,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "CALLVALUE",
   };
   pub const CHAINID: OpCode = OpCode {
     code: 0x46,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "CHAINID",
   };
   pub const CODECOPY: OpCode = OpCode {
     code: 0x39,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 3,
+    stack_height_change: -3,
+    name: "CODECOPY",
   };
   pub const CODESIZE: OpCode = OpCode {
     code: 0x38,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "CODESIZE",
   };
   pub const COINBASE: OpCode = OpCode {
     code: 0x41,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "COINBASE",
   };
   pub const CREATE: OpCode = OpCode {
     code: 0xf0,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 32000,
+    stack_height_required: 3,
+    stack_height_change: -2,
+    name: "CREATE",
   };
   pub const CREATE2: OpCode = OpCode {
     code: 0xf5,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 32000,
+    stack_height_required: 4,
+    stack_height_change: -3,
+    name: "CREATE2",
   };
   pub const DELEGATECALL: OpCode = OpCode {
     code: 0xf4,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: WARM_STORAGE_READ_COST,
+    stack_height_required: 6,
+    stack_height_change: -5,
+    name: "DELEGATECALL",
   };
   pub const DIFFICULTY: OpCode = OpCode {
     code: 0x44,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "DIFFICULTY",
   };
   pub const DIV: OpCode = OpCode {
     code: 0x04,
-    gas_cost: todo!(),
+    price: 5,
     stack_height_required: 2,
     stack_height_change: -1,
-    name: todo!(),
+    name: "DIV",
   };
   pub const DUP1: OpCode = OpCode {
     code: 0x80,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 1,
+    stack_height_change: 1,
+    name: "DUP1",
   };
   pub const DUP10: OpCode = OpCode {
     code: 0x89,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 10,
+    stack_height_change: 1,
+    name: "DUP10",
   };
   pub const DUP11: OpCode = OpCode {
     code: 0x8a,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 11,
+    stack_height_change: 1,
+    name: "DUP11",
   };
   pub const DUP12: OpCode = OpCode {
     code: 0x8b,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 12,
+    stack_height_change: 1,
+    name: "DUP12",
   };
   pub const DUP13: OpCode = OpCode {
     code: 0x8c,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 13,
+    stack_height_change: 1,
+    name: "DUP13",
   };
   pub const DUP14: OpCode = OpCode {
     code: 0x8d,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 14,
+    stack_height_change: 1,
+    name: "DUP14",
   };
   pub const DUP15: OpCode = OpCode {
     code: 0x8e,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 15,
+    stack_height_change: 1,
+    name: "DUP15",
   };
   pub const DUP16: OpCode = OpCode {
     code: 0x8f,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 16,
+    stack_height_change: 1,
+    name: "DUP16",
   };
   pub const DUP2: OpCode = OpCode {
     code: 0x81,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: 1,
+    name: "DUP2",
   };
   pub const DUP3: OpCode = OpCode {
     code: 0x82,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 3,
+    stack_height_change: 1,
+    name: "DUP3",
   };
   pub const DUP4: OpCode = OpCode {
     code: 0x83,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 4,
+    stack_height_change: 1,
+    name: "DUP4",
   };
   pub const DUP5: OpCode = OpCode {
     code: 0x84,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 5,
+    stack_height_change: 1,
+    name: "DUP5",
   };
   pub const DUP6: OpCode = OpCode {
     code: 0x85,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 6,
+    stack_height_change: 1,
+    name: "DUP6",
   };
   pub const DUP7: OpCode = OpCode {
     code: 0x86,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 7,
+    stack_height_change: 1,
+    name: "DUP7",
   };
   pub const DUP8: OpCode = OpCode {
     code: 0x87,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 8,
+    stack_height_change: 1,
+    name: "DUP8",
   };
   pub const DUP9: OpCode = OpCode {
     code: 0x88,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 9,
+    stack_height_change: 1,
+    name: "DUP9",
   };
   pub const EQ: OpCode = OpCode {
     code: 0x14,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "EQ",
   };
   pub const EXP: OpCode = OpCode {
     code: 0x0a,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 10,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "EXP",
   };
   pub const EXTCODECOPY: OpCode = OpCode {
     code: 0x3c,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: WARM_STORAGE_READ_COST,
+    stack_height_required: 4,
+    stack_height_change: -4,
+    name: "EXTCODECOPY",
   };
   pub const EXTCODEHASH: OpCode = OpCode {
     code: 0x3f,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: WARM_STORAGE_READ_COST,
+    stack_height_required: 1,
+    stack_height_change: 0,
+    name: "EXTCODEHASH",
   };
   pub const EXTCODESIZE: OpCode = OpCode {
     code: 0x3b,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: WARM_STORAGE_READ_COST,
+    stack_height_required: 1,
+    stack_height_change: 0,
+    name: "EXTCODESIZE",
   };
   pub const GAS: OpCode = OpCode {
     code: 0x5a,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "GAS",
   };
   pub const GASLIMIT: OpCode = OpCode {
     code: 0x45,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "GASLIMIT",
   };
   pub const GASPRICE: OpCode = OpCode {
     code: 0x3a,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "GASPRICE",
   };
   pub const GT: OpCode = OpCode {
     code: 0x11,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "GT",
   };
   pub const INVALID: OpCode = OpCode {
     code: 0xfe,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 0,
+    stack_height_required: 0,
+    stack_height_change: 0,
+    name: "INVALID",
   };
   pub const ISZERO: OpCode = OpCode {
     code: 0x15,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 1,
+    stack_height_change: 0,
+    name: "ISZERO",
   };
   pub const JUMP: OpCode = OpCode {
     code: 0x56,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 8,
+    stack_height_required: 1,
+    stack_height_change: -1,
+    name: "JUMP",
   };
   pub const JUMPDEST: OpCode = OpCode {
     code: 0x5b,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 1,
+    stack_height_required: 0,
+    stack_height_change: 0,
+    name: "JUMPDEST",
   };
   pub const JUMPI: OpCode = OpCode {
     code: 0x57,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 10,
+    stack_height_required: 2,
+    stack_height_change: -2,
+    name: "JUMPI",
   };
   pub const KECCAK256: OpCode = OpCode {
     code: 0x20,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 30,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "KECCAK256",
   };
   pub const LOG0: OpCode = OpCode {
     code: 0xa0,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 375,
+    stack_height_required: 2,
+    stack_height_change: -2,
+    name: "LOG0",
   };
   pub const LOG1: OpCode = OpCode {
     code: 0xa1,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2 * 375,
+    stack_height_required: 3,
+    stack_height_change: -3,
+    name: "LOG1",
   };
   pub const LOG2: OpCode = OpCode {
     code: 0xa2,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3 * 375,
+    stack_height_required: 4,
+    stack_height_change: -4,
+    name: "LOG2",
   };
   pub const LOG3: OpCode = OpCode {
     code: 0xa3,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 4 * 375,
+    stack_height_required: 5,
+    stack_height_change: -5,
+    name: "LOG3",
   };
   pub const LOG4: OpCode = OpCode {
     code: 0xa4,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 5 * 375,
+    stack_height_required: 6,
+    stack_height_change: -6,
+    name: "LOG4",
   };
   pub const LT: OpCode = OpCode {
     code: 0x10,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "LT",
   };
   pub const MLOAD: OpCode = OpCode {
     code: 0x51,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 1,
+    stack_height_change: 0,
+    name: "MLOAD",
   };
   pub const MOD: OpCode = OpCode {
     code: 0x06,
-    gas_cost: todo!(),
+    price: 5,
     stack_height_required: 2,
     stack_height_change: -1,
-    name: todo!(),
+    name: "MOD",
   };
   pub const MSIZE: OpCode = OpCode {
     code: 0x59,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "MSIZE",
   };
   pub const MSTORE: OpCode = OpCode {
     code: 0x52,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -2,
+    name: "MSTORE",
   };
   pub const MSTORE8: OpCode = OpCode {
     code: 0x53,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -2,
+    name: "MSTORE8",
   };
   pub const MUL: OpCode = OpCode {
     code: 0x02,
-    gas_cost: todo!(),
+    price: 5,
     stack_height_required: 2,
     stack_height_change: -1,
-    name: todo!(),
+    name: "MUL",
   };
   pub const MULMOD: OpCode = OpCode {
     code: 0x09,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 8,
+    stack_height_required: 3,
+    stack_height_change: -2,
+    name: "MULMOD",
   };
   pub const NOT: OpCode = OpCode {
     code: 0x19,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 1,
+    stack_height_change: 0,
+    name: "NOT",
   };
   pub const NUMBER: OpCode = OpCode {
     code: 0x43,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "NUMBER",
   };
   pub const OR: OpCode = OpCode {
     code: 0x17,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "OR",
   };
   pub const ORIGIN: OpCode = OpCode {
     code: 0x32,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "ORIGIN",
   };
   pub const PC: OpCode = OpCode {
     code: 0x58,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PC",
   };
   pub const POP: OpCode = OpCode {
     code: 0x50,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 1,
+    stack_height_change: -1,
+    name: "POP",
   };
   pub const PUSH1: OpCode = OpCode {
     code: 0x60,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH1",
   };
   pub const PUSH10: OpCode = OpCode {
     code: 0x69,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH10",
   };
   pub const PUSH11: OpCode = OpCode {
     code: 0x6a,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH11",
   };
   pub const PUSH12: OpCode = OpCode {
     code: 0x6b,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH12",
   };
   pub const PUSH13: OpCode = OpCode {
     code: 0x6c,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH13",
   };
   pub const PUSH14: OpCode = OpCode {
     code: 0x6d,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH14",
   };
   pub const PUSH15: OpCode = OpCode {
     code: 0x6e,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH15",
   };
   pub const PUSH16: OpCode = OpCode {
     code: 0x6f,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH16",
   };
   pub const PUSH17: OpCode = OpCode {
     code: 0x70,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH17",
   };
   pub const PUSH18: OpCode = OpCode {
     code: 0x71,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH18",
   };
   pub const PUSH19: OpCode = OpCode {
     code: 0x72,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH19",
   };
   pub const PUSH2: OpCode = OpCode {
     code: 0x61,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH2",
   };
   pub const PUSH20: OpCode = OpCode {
     code: 0x73,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH20",
   };
   pub const PUSH21: OpCode = OpCode {
     code: 0x74,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH21",
   };
   pub const PUSH22: OpCode = OpCode {
     code: 0x75,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH22",
   };
   pub const PUSH23: OpCode = OpCode {
     code: 0x76,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH23",
   };
   pub const PUSH24: OpCode = OpCode {
     code: 0x77,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH24",
   };
   pub const PUSH25: OpCode = OpCode {
     code: 0x78,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH25",
   };
   pub const PUSH26: OpCode = OpCode {
     code: 0x79,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH26",
   };
   pub const PUSH27: OpCode = OpCode {
     code: 0x7a,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH27",
   };
   pub const PUSH28: OpCode = OpCode {
     code: 0x7b,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH28",
   };
   pub const PUSH29: OpCode = OpCode {
     code: 0x7c,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH29",
   };
   pub const PUSH3: OpCode = OpCode {
     code: 0x62,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH3",
   };
   pub const PUSH30: OpCode = OpCode {
     code: 0x7d,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH30",
   };
   pub const PUSH31: OpCode = OpCode {
     code: 0x7e,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH31",
   };
   pub const PUSH32: OpCode = OpCode {
     code: 0x7f,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH32",
   };
   pub const PUSH4: OpCode = OpCode {
     code: 0x63,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH4",
   };
   pub const PUSH5: OpCode = OpCode {
     code: 0x64,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH5",
   };
   pub const PUSH6: OpCode = OpCode {
     code: 0x65,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH6",
   };
   pub const PUSH7: OpCode = OpCode {
     code: 0x66,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH7",
   };
   pub const PUSH8: OpCode = OpCode {
     code: 0x67,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH8",
   };
   pub const PUSH9: OpCode = OpCode {
     code: 0x68,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "PUSH9",
   };
   pub const RETURN: OpCode = OpCode {
     code: 0xf3,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 0,
+    stack_height_required: 2,
+    stack_height_change: -2,
+    name: "RETURN",
   };
   pub const RETURNDATACOPY: OpCode = OpCode {
     code: 0x3e,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 3,
+    stack_height_change: -3,
+    name: "RETURNDATACOPY",
   };
   pub const RETURNDATASIZE: OpCode = OpCode {
     code: 0x3d,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "RETURNDATASIZE",
   };
   pub const REVERT: OpCode = OpCode {
     code: 0xfd,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 0,
+    stack_height_required: 2,
+    stack_height_change: -2,
+    name: "REVERT",
   };
   pub const SAR: OpCode = OpCode {
     code: 0x1d,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "SAR",
   };
   pub const SDIV: OpCode = OpCode {
     code: 0x05,
-    gas_cost: todo!(),
+    price: 5,
     stack_height_required: 2,
     stack_height_change: -1,
-    name: todo!(),
+    name: "SDIV",
   };
   pub const SELFBALANCE: OpCode = OpCode {
     code: 0x47,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 5,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "SELFBALANCE",
   };
   pub const SELFDESTRUCT: OpCode = OpCode {
     code: 0xff,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 5000,
+    stack_height_required: 1,
+    stack_height_change: -1,
+    name: "SELFDESTRUCT",
   };
   pub const SGT: OpCode = OpCode {
     code: 0x13,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "SGT",
   };
   pub const SHL: OpCode = OpCode {
     code: 0x1b,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "SHL",
   };
   pub const SHR: OpCode = OpCode {
     code: 0x1c,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "SHR",
   };
   pub const SIGNEXTEND: OpCode = OpCode {
     code: 0x0b,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 5,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "SIGNEXTEND",
   };
   pub const SLOAD: OpCode = OpCode {
     code: 0x54,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: WARM_STORAGE_READ_COST,
+    stack_height_required: 1,
+    stack_height_change: 0,
+    name: "SLOAD",
   };
   pub const SLT: OpCode = OpCode {
     code: 0x12,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "SLT",
   };
   pub const SMOD: OpCode = OpCode {
     code: 0x07,
-    gas_cost: todo!(),
+    price: 5,
     stack_height_required: 2,
     stack_height_change: -1,
-    name: todo!(),
+    name: "SMOD",
   };
   pub const SSTORE: OpCode = OpCode {
     code: 0x55,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 0,
+    stack_height_required: 2,
+    stack_height_change: -2,
+    name: "SSTORE",
   };
   pub const STATICCALL: OpCode = OpCode {
     code: 0xfa,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: WARM_STORAGE_READ_COST,
+    stack_height_required: 6,
+    stack_height_change: -5,
+    name: "STATICCALL",
   };
   pub const STOP: OpCode = OpCode {
     code: 0x00,
-    gas_cost: todo!(),
+    price: 0,
     stack_height_required: 0,
     stack_height_change: 0,
-    name: todo!(),
+    name: "STOP",
   };
   pub const SUB: OpCode = OpCode {
     code: 0x03,
-    gas_cost: todo!(),
+    price: 3,
     stack_height_required: 2,
     stack_height_change: -1,
-    name: todo!(),
+    name: "SUB",
   };
   pub const SWAP1: OpCode = OpCode {
     code: 0x90,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: 0,
+    name: "SWAP1",
   };
   pub const SWAP10: OpCode = OpCode {
     code: 0x99,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 11,
+    stack_height_change: 0,
+    name: "SWAP10",
   };
   pub const SWAP11: OpCode = OpCode {
     code: 0x9a,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 12,
+    stack_height_change: 0,
+    name: "SWAP11",
   };
   pub const SWAP12: OpCode = OpCode {
     code: 0x9b,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 13,
+    stack_height_change: 0,
+    name: "SWAP12",
   };
   pub const SWAP13: OpCode = OpCode {
     code: 0x9c,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 14,
+    stack_height_change: 0,
+    name: "SWAP13",
   };
   pub const SWAP14: OpCode = OpCode {
     code: 0x9d,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 15,
+    stack_height_change: 0,
+    name: "SWAP14",
   };
   pub const SWAP15: OpCode = OpCode {
     code: 0x9e,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 16,
+    stack_height_change: 0,
+    name: "SWAP15",
   };
   pub const SWAP16: OpCode = OpCode {
     code: 0x9f,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 17,
+    stack_height_change: 0,
+    name: "SWAP16",
   };
   pub const SWAP2: OpCode = OpCode {
     code: 0x91,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 3,
+    stack_height_change: 0,
+    name: "SWAP2",
   };
   pub const SWAP3: OpCode = OpCode {
     code: 0x92,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 4,
+    stack_height_change: 0,
+    name: "SWAP3",
   };
   pub const SWAP4: OpCode = OpCode {
     code: 0x93,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 5,
+    stack_height_change: 0,
+    name: "SWAP4",
   };
   pub const SWAP5: OpCode = OpCode {
     code: 0x94,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 6,
+    stack_height_change: 0,
+    name: "SWAP5",
   };
   pub const SWAP6: OpCode = OpCode {
     code: 0x95,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 7,
+    stack_height_change: 0,
+    name: "SWAP6",
   };
   pub const SWAP7: OpCode = OpCode {
     code: 0x96,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 8,
+    stack_height_change: 0,
+    name: "SWAP7",
   };
   pub const SWAP8: OpCode = OpCode {
     code: 0x97,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 9,
+    stack_height_change: 0,
+    name: "SWAP8",
   };
   pub const SWAP9: OpCode = OpCode {
     code: 0x98,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 10,
+    stack_height_change: 0,
+    name: "SWAP9",
   };
   pub const TIMESTAMP: OpCode = OpCode {
     code: 0x42,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 2,
+    stack_height_required: 0,
+    stack_height_change: 1,
+    name: "TIMESTAMP",
   };
   pub const XOR: OpCode = OpCode {
     code: 0x18,
-    gas_cost: todo!(),
-    stack_height_required: todo!(),
-    stack_height_change: todo!(),
-    name: todo!(),
+    price: 3,
+    stack_height_required: 2,
+    stack_height_change: -1,
+    name: "XOR",
   };
 }
 
