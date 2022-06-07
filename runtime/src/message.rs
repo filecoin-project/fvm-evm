@@ -167,36 +167,6 @@ pub struct Output {
   pub output_data: Bytes,
   /// Contract creation address.
   pub create_address: Option<H160>,
-}
-
-/// EVM execution output if no error has occurred.
-#[derive(Clone, Debug, PartialEq)]
-pub struct SuccessfulOutput {
-  /// Indicates if revert was requested.
+  // indicates if revert was requested
   pub reverted: bool,
-  /// How much gas was left after execution.
-  pub gas_left: i64,
-  /// Output data returned.
-  pub output_data: Bytes,
-}
-
-impl From<SuccessfulOutput> for Output {
-  fn from(
-    SuccessfulOutput {
-      reverted,
-      gas_left,
-      output_data,
-    }: SuccessfulOutput,
-  ) -> Self {
-    Self {
-      status_code: if reverted {
-        StatusCode::Revert
-      } else {
-        StatusCode::Success
-      },
-      gas_left,
-      output_data,
-      create_address: None,
-    }
-  }
 }

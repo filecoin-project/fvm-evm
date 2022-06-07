@@ -7,13 +7,15 @@ pub(crate) fn push<const LEN: usize>(stack: &mut Stack, code: &[u8]) -> usize {
 }
 
 #[inline]
-pub(crate) fn push1(stack: &mut Stack, v: u8) {
+pub(crate) fn push1(stack: &mut Stack, v: u8) -> usize {
   stack.push(v.into());
+  1
 }
 
 #[inline]
-pub(crate) fn push32(stack: &mut Stack, code: &[u8]) {
+pub(crate) fn push32(stack: &mut Stack, code: &[u8]) -> usize {
   stack.push(U256::from_big_endian(&code[0..32]));
+  32
 }
 
 #[inline]

@@ -4,5 +4,6 @@ pub mod boolean;
 pub mod call;
 pub mod control;
 pub mod external;
-pub mod manip;
+pub mod hash;
 pub mod memory;
+pub mod stack;

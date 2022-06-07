@@ -1,9 +1,11 @@
 mod actor;
+mod bytecode;
 mod execution;
 mod instructions;
 mod memory;
 mod message;
 mod opcode;
+mod platform;
 mod stack;
 mod state;
 

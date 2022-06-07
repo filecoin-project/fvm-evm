@@ -7,7 +7,7 @@ use {
 /// The size of the EVM 256-bit word in bytes.
 const WORD_SIZE: usize = 32;
 
-struct MemoryRegion {
+pub struct MemoryRegion {
   pub offset: usize,
   pub size: NonZeroUsize,
 }
@@ -15,7 +15,7 @@ struct MemoryRegion {
 /// Returns number of words what would fit to provided number of bytes,
 /// i.e. it rounds up the number bytes to number of words.
 #[inline]
-fn num_words(size_in_bytes: usize) -> usize {
+pub fn num_words(size_in_bytes: usize) -> usize {
   (size_in_bytes + (WORD_SIZE - 1)) / WORD_SIZE
 }
 
@@ -61,7 +61,7 @@ fn get_memory_region_u64(
 }
 
 #[inline]
-fn get_memory_region(
+pub fn get_memory_region(
   state: &mut ExecutionState,
   offset: U256,
   size: U256,

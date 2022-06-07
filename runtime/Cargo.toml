@@ -30,6 +30,7 @@ bytes = { version = "1.1.0", default-features = false }
 derive_more = "0.99"
 strum = "0.24"
 strum_macros = "0.24"
+sha3 = { version = "0.10", default-features = false }
 
 fvm-evm = { path = "../shared" }
 

@@ -4,7 +4,9 @@
 //! than the release date of the FVM-EVM runtime, so supporting
 //! historic behavior is not needed.
 
-#[derive(Clone, Copy, Debug)]
+use crate::message::StatusCode;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct OpCode {
   /// the byte representing the opcode in binary
   pub code: u8,
@@ -33,12 +35,6 @@ impl OpCode {
   #[inline]
   pub const fn to_usize(self) -> usize {
     self.to_u8() as usize
-  }
-}
-
-impl PartialEq<u8> for OpCode {
-  fn eq(&self, other: &u8) -> bool {
-    self.code == *other
   }
 }
 
@@ -1053,5 +1049,166 @@ impl OpCode {
 impl std::fmt::Display for OpCode {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{}", self.name)
+  }
+}
+
+impl TryFrom<u8> for OpCode {
+  type Error = StatusCode;
+
+  fn try_from(value: u8) -> Result<Self, Self::Error> {
+    // todo: optimize and turn it into a jump table
+    const OPCODES: [OpCode; 143] = [
+      OpCode::STOP,
+      OpCode::ADD,
+      OpCode::MUL,
+      OpCode::SUB,
+      OpCode::DIV,
+      OpCode::SDIV,
+      OpCode::MOD,
+      OpCode::SMOD,
+      OpCode::ADDMOD,
+      OpCode::MULMOD,
+      OpCode::EXP,
+      OpCode::SIGNEXTEND,
+      OpCode::LT,
+      OpCode::GT,
+      OpCode::SLT,
+      OpCode::SGT,
+      OpCode::EQ,
+      OpCode::ISZERO,
+      OpCode::AND,
+      OpCode::OR,
+      OpCode::XOR,
+      OpCode::NOT,
+      OpCode::BYTE,
+      OpCode::SHL,
+      OpCode::SHR,
+      OpCode::SAR,
+      OpCode::KECCAK256,
+      OpCode::ADDRESS,
+      OpCode::BALANCE,
+      OpCode::ORIGIN,
+      OpCode::CALLER,
+      OpCode::CALLVALUE,
+      OpCode::CALLDATALOAD,
+      OpCode::CALLDATASIZE,
+      OpCode::CALLDATACOPY,
+      OpCode::CODESIZE,
+      OpCode::CODECOPY,
+      OpCode::GASPRICE,
+      OpCode::EXTCODESIZE,
+      OpCode::EXTCODECOPY,
+      OpCode::RETURNDATASIZE,
+      OpCode::RETURNDATACOPY,
+      OpCode::EXTCODEHASH,
+      OpCode::BLOCKHASH,
+      OpCode::COINBASE,
+      OpCode::TIMESTAMP,
+      OpCode::NUMBER,
+      OpCode::DIFFICULTY,
+      OpCode::GASLIMIT,
+      OpCode::CHAINID,
+      OpCode::SELFBALANCE,
+      OpCode::BASEFEE,
+      OpCode::POP,
+      OpCode::MLOAD,
+      OpCode::MSTORE,
+      OpCode::MSTORE8,
+      OpCode::SLOAD,
+      OpCode::SSTORE,
+      OpCode::JUMP,
+      OpCode::JUMPI,
+      OpCode::PC,
+      OpCode::MSIZE,
+      OpCode::GAS,
+      OpCode::JUMPDEST,
+      OpCode::PUSH1,
+      OpCode::PUSH2,
+      OpCode::PUSH3,
+      OpCode::PUSH4,
+      OpCode::PUSH5,
+      OpCode::PUSH6,
+      OpCode::PUSH7,
+      OpCode::PUSH8,
+      OpCode::PUSH9,
+      OpCode::PUSH10,
+      OpCode::PUSH11,
+      OpCode::PUSH12,
+      OpCode::PUSH13,
+      OpCode::PUSH14,
+      OpCode::PUSH15,
+      OpCode::PUSH16,
+      OpCode::PUSH17,
+      OpCode::PUSH18,
+      OpCode::PUSH19,
+      OpCode::PUSH20,
+      OpCode::PUSH21,
+      OpCode::PUSH22,
+      OpCode::PUSH23,
+      OpCode::PUSH24,
+      OpCode::PUSH25,
+      OpCode::PUSH26,
+      OpCode::PUSH27,
+      OpCode::PUSH28,
+      OpCode::PUSH29,
+      OpCode::PUSH30,
+      OpCode::PUSH31,
+      OpCode::PUSH32,
+      OpCode::DUP1,
+      OpCode::DUP2,
+      OpCode::DUP3,
+      OpCode::DUP4,
+      OpCode::DUP5,
+      OpCode::DUP6,
+      OpCode::DUP7,
+      OpCode::DUP8,
+      OpCode::DUP9,
+      OpCode::DUP10,
+      OpCode::DUP11,
+      OpCode::DUP12,
+      OpCode::DUP13,
+      OpCode::DUP14,
+      OpCode::DUP15,
+      OpCode::DUP16,
+      OpCode::SWAP1,
+      OpCode::SWAP2,
+      OpCode::SWAP3,
+      OpCode::SWAP4,
+      OpCode::SWAP5,
+      OpCode::SWAP6,
+      OpCode::SWAP7,
+      OpCode::SWAP8,
+      OpCode::SWAP9,
+      OpCode::SWAP10,
+      OpCode::SWAP11,
+      OpCode::SWAP12,
+      OpCode::SWAP13,
+      OpCode::SWAP14,
+      OpCode::SWAP15,
+      OpCode::SWAP16,
+      OpCode::LOG0,
+      OpCode::LOG1,
+      OpCode::LOG2,
+      OpCode::LOG3,
+      OpCode::LOG4,
+      OpCode::CREATE,
+      OpCode::CALL,
+      OpCode::CALLCODE,
+      OpCode::RETURN,
+      OpCode::DELEGATECALL,
+      OpCode::CREATE2,
+      OpCode::STATICCALL,
+      OpCode::REVERT,
+      OpCode::INVALID,
+      OpCode::SELFDESTRUCT,
+    ];
+
+    for op in OPCODES {
+      if op.to_u8() == value {
+        return Ok(op);
+      }
+    }
+
+    Err(StatusCode::UndefinedInstruction)
   }
 }
