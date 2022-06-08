@@ -1,6 +1,11 @@
 use {
   super::memory::{get_memory_region, num_words},
-  crate::{execution::ExecutionState, message::StatusCode, stack::Stack},
+  crate::{
+    execution::ExecutionState,
+    message::{CallKind, StatusCode},
+    platform::Platform,
+    stack::Stack,
+  },
   fvm_evm::U256,
 };
 
@@ -104,4 +109,14 @@ pub fn codecopy(state: &mut ExecutionState, code: &[u8]) -> Result<(), StatusCod
   }
 
   Ok(())
+}
+
+#[inline]
+pub fn call(
+  state: &mut ExecutionState,
+  platform: &Platform,
+  kind: CallKind,
+  is_static: bool,
+) -> Result<(), StatusCode> {
+  todo!();
 }

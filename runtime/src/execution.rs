@@ -6,13 +6,16 @@ use {
       bitwise,
       boolean,
       call,
+      context,
       control,
       hash,
+      log::log,
       memory,
       stack::{self, dup, push, push1, push32, swap},
+      storage,
     },
     memory::Memory,
-    message::{Message, Output, StatusCode},
+    message::{CallKind, Message, Output, StatusCode},
     opcode::OpCode,
     platform::Platform,
     stack::Stack,
@@ -57,6 +60,10 @@ pub fn execute(
   let mut reverted = false;
 
   loop {
+    if pc >= bytecode.len() {
+      break;
+    }
+
     let op = OpCode::try_from(bytecode[pc])?;
     match op {
       OpCode::STOP => break,
@@ -86,31 +93,31 @@ pub fn execute(
       OpCode::SHR => bitwise::shr(&mut runtime.stack),
       OpCode::SAR => bitwise::sar(&mut runtime.stack),
       OpCode::KECCAK256 => hash::keccak256(runtime)?,
-      OpCode::ADDRESS => todo!(),
-      OpCode::BALANCE => todo!(),
-      OpCode::CALLER => todo!(),
-      OpCode::CALLVALUE => todo!(),
+      OpCode::ADDRESS => context::address(state, platform)?,
+      OpCode::BALANCE => storage::balance(runtime, platform)?,
+      OpCode::CALLER => context::caller(state, platform)?,
+      OpCode::CALLVALUE => context::call_value(state, platform)?,
       OpCode::CALLDATALOAD => call::calldataload(runtime),
       OpCode::CALLDATASIZE => call::calldatasize(runtime),
       OpCode::CALLDATACOPY => call::calldatacopy(runtime)?,
       OpCode::CODESIZE => call::codesize(&mut runtime.stack, bytecode.as_ref()),
       OpCode::CODECOPY => call::codecopy(runtime, bytecode.as_ref())?,
-      OpCode::EXTCODESIZE => todo!(),
-      OpCode::EXTCODECOPY => todo!(),
+      OpCode::EXTCODESIZE => storage::extcodesize(state, platform)?,
+      OpCode::EXTCODECOPY => memory::extcodecopy(state, platform)?,
       OpCode::RETURNDATASIZE => control::returndatasize(runtime),
       OpCode::RETURNDATACOPY => control::returndatacopy(runtime)?,
-      OpCode::EXTCODEHASH => todo!(),
-      OpCode::BLOCKHASH => todo!(),
-      OpCode::ORIGIN => todo!(),
-      OpCode::COINBASE => todo!(),
-      OpCode::GASPRICE => todo!(),
-      OpCode::TIMESTAMP => todo!(),
-      OpCode::NUMBER => todo!(),
-      OpCode::DIFFICULTY => todo!(),
-      OpCode::GASLIMIT => todo!(),
-      OpCode::CHAINID => todo!(),
-      OpCode::BASEFEE => todo!(),
-      OpCode::SELFBALANCE => todo!(),
+      OpCode::EXTCODEHASH => storage::extcodehash(state, platform)?,
+      OpCode::BLOCKHASH => context::blockhash(state, platform)?,
+      OpCode::ORIGIN => context::origin(state, platform)?,
+      OpCode::COINBASE => context::coinbase(state, platform)?,
+      OpCode::GASPRICE => context::gas_price(state, platform)?,
+      OpCode::TIMESTAMP => context::timestamp(state, platform)?,
+      OpCode::NUMBER => context::block_number(state, platform)?,
+      OpCode::DIFFICULTY => context::difficulty(state, platform)?,
+      OpCode::GASLIMIT => context::gas_limit(state, platform)?,
+      OpCode::CHAINID => context::chain_id(state, platform)?,
+      OpCode::BASEFEE => context::base_fee(state, platform)?,
+      OpCode::SELFBALANCE => storage::selfbalance(state, platform)?,
       OpCode::POP => stack::pop(&mut runtime.stack),
       OpCode::MLOAD => memory::mload(runtime)?,
       OpCode::MSTORE => memory::mstore(runtime)?,
@@ -128,10 +135,10 @@ pub fn execute(
       }
       OpCode::PC => control::pc(&mut runtime.stack, pc),
       OpCode::MSIZE => memory::msize(runtime),
-      OpCode::SLOAD => todo!(),
-      OpCode::SSTORE => todo!(),
+      OpCode::SLOAD => storage::sload(runtime, platform)?,
+      OpCode::SSTORE => storage::sstore(runtime, platform)?,
       OpCode::GAS => control::gas(runtime),
-      OpCode::JUMPDEST => {} // marker for jumps
+      OpCode::JUMPDEST => {} // marker opcode for valid jumps addresses
       OpCode::PUSH1 => pc += push1(&mut runtime.stack, bytecode[pc + 1]),
       OpCode::PUSH2 => pc += push::<2>(&mut runtime.stack, &bytecode[pc + 1..]),
       OpCode::PUSH3 => pc += push::<3>(&mut runtime.stack, &bytecode[pc + 1..]),
@@ -196,24 +203,26 @@ pub fn execute(
       OpCode::SWAP14 => swap::<14>(&mut runtime.stack),
       OpCode::SWAP15 => swap::<15>(&mut runtime.stack),
       OpCode::SWAP16 => swap::<16>(&mut runtime.stack),
-      OpCode::LOG0 => todo!(),
-      OpCode::LOG1 => todo!(),
-      OpCode::LOG2 => todo!(),
-      OpCode::LOG3 => todo!(),
-      OpCode::LOG4 => todo!(),
-      OpCode::CREATE => todo!(),
-      OpCode::CREATE2 => todo!(),
-      OpCode::CALL => todo!(),
-      OpCode::CALLCODE => todo!(),
-      OpCode::DELEGATECALL => todo!(),
-      OpCode::STATICCALL => todo!(),
+      OpCode::LOG0 => log(runtime, platform, 0)?,
+      OpCode::LOG1 => log(runtime, platform, 1)?,
+      OpCode::LOG2 => log(runtime, platform, 2)?,
+      OpCode::LOG3 => log(runtime, platform, 3)?,
+      OpCode::LOG4 => log(runtime, platform, 4)?,
+      OpCode::CREATE => storage::create(state, platform, false)?,
+      OpCode::CREATE2 => storage::create(state, platform, true)?,
+      OpCode::CALL => call::call(runtime, platform, CallKind::Call, false)?,
+      OpCode::CALLCODE => call::call(runtime, platform, CallKind::CallCode, false)?,
+      OpCode::DELEGATECALL => {
+        call::call(runtime, platform, CallKind::DelegateCall, false)?
+      }
+      OpCode::STATICCALL => call::call(runtime, platform, CallKind::Call, true)?,
       OpCode::RETURN | OpCode::REVERT => {
         control::ret(runtime)?;
         reverted = op == OpCode::REVERT;
         break;
       }
       OpCode::INVALID => return Err(StatusCode::InvalidInstruction),
-      OpCode::SELFDESTRUCT => todo!(),
+      OpCode::SELFDESTRUCT => storage::selfdestruct(state, platform)?,
       _ => return Err(StatusCode::UndefinedInstruction),
     }
 

@@ -44,6 +44,49 @@ pub struct Message {
   pub value: U256,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct CreateMessage {
+  pub salt: Option<U256>,
+  pub gas: i64,
+  pub depth: i32,
+  pub initcode: Bytes,
+  pub sender: H160,
+  pub endowment: U256,
+}
+
+impl From<CreateMessage> for Message {
+  fn from(msg: CreateMessage) -> Self {
+    Self {
+      kind: match msg.salt {
+        Some(salt) => CallKind::Create2 { salt },
+        None => CallKind::Create,
+      },
+      is_static: false,
+      depth: msg.depth,
+      gas: msg.gas,
+      recipient: H160::zero(),
+      sender: msg.sender,
+      input_data: msg.initcode,
+      value: msg.endowment,
+    }
+  }
+}
+
+/// Output of EVM execution.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Output {
+  /// EVM exited with this status code.
+  pub status_code: StatusCode,
+  /// How much gas was left after execution
+  pub gas_left: i64,
+  /// Output data returned.
+  pub output_data: Bytes,
+  /// Contract creation address.
+  pub create_address: Option<H160>,
+  // indicates if revert was requested
+  pub reverted: bool,
+}
+
 /// Message status code.
 #[must_use]
 #[derive(Clone, Copy, Debug, Display, PartialEq)]
@@ -126,47 +169,4 @@ pub enum StatusCode {
   /// EVM implementation generic internal error.
   #[strum(serialize = "internal error")]
   InternalError(&'static str),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct CreateMessage {
-  pub salt: Option<U256>,
-  pub gas: i64,
-  pub depth: i32,
-  pub initcode: Bytes,
-  pub sender: H160,
-  pub endowment: U256,
-}
-
-impl From<CreateMessage> for Message {
-  fn from(msg: CreateMessage) -> Self {
-    Self {
-      kind: match msg.salt {
-        Some(salt) => CallKind::Create2 { salt },
-        None => CallKind::Create,
-      },
-      is_static: false,
-      depth: msg.depth,
-      gas: msg.gas,
-      recipient: H160::zero(),
-      sender: msg.sender,
-      input_data: msg.initcode,
-      value: msg.endowment,
-    }
-  }
-}
-
-/// Output of EVM execution.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Output {
-  /// EVM exited with this status code.
-  pub status_code: StatusCode,
-  /// How much gas was left after execution
-  pub gas_left: i64,
-  /// Output data returned.
-  pub output_data: Bytes,
-  /// Contract creation address.
-  pub create_address: Option<H160>,
-  // indicates if revert was requested
-  pub reverted: bool,
 }
