@@ -18,8 +18,11 @@ pub enum AccountKind {
   /// A contract account.
   ///
   /// Has state and bytecode but no corresponding private key.
-  /// Not linked to a FIL account.
-  Contract,
+  /// Always known for contract accounts, because all contract
+  /// creation goes through the registry.
+  Contract {
+    fil_account: FileCoinAddress
+  },
 }
 
 impl Default for AccountKind {
