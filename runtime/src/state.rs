@@ -1,6 +1,6 @@
 use {
   cid::Cid,
-  fvm_evm::{abort, U256},
+  fvm_evm::{abort, H160, U256},
   fvm_ipld_blockstore::Blockstore,
   fvm_ipld_encoding::{to_vec, Cbor, RawBytes, DAG_CBOR},
   fvm_ipld_hamt::Hamt,
@@ -27,6 +27,9 @@ pub struct ContractState {
   ///
   /// HAMT<U256, U256>
   pub state: Cid,
+
+  /// EVM address of the current contract
+  pub self_address: H160,
 }
 
 impl Cbor for ContractState {}
@@ -36,13 +39,15 @@ impl ContractState {
   /// EVM contract. This method will execute the initialization code
   /// and store the contract bytecode, and the EVM constructor state
   /// in the state HAMT.
-  pub fn new<BS: Blockstore>(
+  pub fn new<'r, BS: Blockstore>(
     bytecode: &(impl AsRef<[u8]> + ?Sized),
     registry: Address,
     blockstore: BS,
+    self_address: H160,
   ) -> anyhow::Result<Self> {
     let this = Self {
       registry,
+      self_address,
       bytecode: ipld::put(
         Code::Blake2b256.into(),
         32,
@@ -68,17 +73,13 @@ impl ContractState {
         abort!(USR_SERIALIZATION, "failed to serialize state: {:?}", err)
       }
     };
-    let cid = match ipld::put(
-      Code::Blake2b256.into(),
-      32,
-      DAG_CBOR,
-      serialized.as_slice(),
-    ) {
-      Ok(cid) => cid,
-      Err(err) => {
-        abort!(USR_SERIALIZATION, "failed to store initial state: {:}", err)
-      }
-    };
+    let cid =
+      match ipld::put(Code::Blake2b256.into(), 32, DAG_CBOR, serialized.as_slice()) {
+        Ok(cid) => cid,
+        Err(err) => {
+          abort!(USR_SERIALIZATION, "failed to store initial state: {:}", err)
+        }
+      };
     if let Err(err) = sself::set_root(&cid) {
       abort!(USR_ILLEGAL_STATE, "failed to set root ciid: {:}", err);
     }

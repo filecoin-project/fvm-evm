@@ -17,15 +17,12 @@ use {
     memory::Memory,
     message::{CallKind, Message, Output, StatusCode},
     opcode::OpCode,
-    platform::Platform,
     stack::Stack,
+    system::System,
   },
   bytes::Bytes,
+  fvm_ipld_blockstore::Blockstore,
 };
-
-/// Maximum allowed EVM bytecode size.
-/// The contract code size limit is 24kB.
-pub const MAX_CODE_SIZE: usize = 0x6000;
 
 /// EVM execution runtime.
 #[derive(Clone, Debug)]
@@ -51,10 +48,10 @@ impl<'m> ExecutionState<'m> {
   }
 }
 
-pub fn execute(
+pub fn execute<'r, BS: Blockstore>(
   bytecode: &Bytecode,
   runtime: &mut ExecutionState,
-  system: &mut Platform,
+  system: &'r mut System<'r, BS>,
 ) -> Result<Output, StatusCode> {
   let mut pc = 0; // program counter
   let mut reverted = false;
@@ -212,9 +209,7 @@ pub fn execute(
       OpCode::CREATE2 => storage::create(runtime, system, true)?,
       OpCode::CALL => call::call(runtime, system, CallKind::Call, false)?,
       OpCode::CALLCODE => call::call(runtime, system, CallKind::CallCode, false)?,
-      OpCode::DELEGATECALL => {
-        call::call(runtime, system, CallKind::DelegateCall, false)?
-      }
+      OpCode::DELEGATECALL => call::call(runtime, system, CallKind::DelegateCall, false)?,
       OpCode::STATICCALL => call::call(runtime, system, CallKind::Call, true)?,
       OpCode::RETURN | OpCode::REVERT => {
         control::ret(runtime)?;

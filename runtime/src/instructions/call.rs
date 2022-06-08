@@ -3,10 +3,11 @@ use {
   crate::{
     execution::ExecutionState,
     message::{CallKind, StatusCode},
-    platform::Platform,
     stack::Stack,
+    system::System,
   },
   fvm_evm::U256,
+  fvm_ipld_blockstore::Blockstore,
 };
 
 #[inline]
@@ -112,11 +113,11 @@ pub fn codecopy(state: &mut ExecutionState, code: &[u8]) -> Result<(), StatusCod
 }
 
 #[inline]
-pub fn call(
-  state: &mut ExecutionState,
-  platform: &Platform,
-  kind: CallKind,
-  is_static: bool,
+pub fn call<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
+  _kind: CallKind,
+  _is_static: bool,
 ) -> Result<(), StatusCode> {
   todo!();
 }

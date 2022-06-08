@@ -1,6 +1,7 @@
 use {
-  crate::{execution::ExecutionState, message::StatusCode, platform::Platform},
+  crate::{execution::ExecutionState, message::StatusCode, system::System},
   fvm_evm::U256,
+  fvm_ipld_blockstore::Blockstore,
   std::num::NonZeroUsize,
 };
 
@@ -130,9 +131,9 @@ pub fn msize(state: &mut ExecutionState) {
     .push(u64::try_from(state.memory.len()).unwrap().into());
 }
 
-pub fn extcodecopy(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn extcodecopy<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!();
 }

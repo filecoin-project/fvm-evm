@@ -1,6 +1,7 @@
 use {
-  crate::{execution::ExecutionState, message::StatusCode, platform::Platform},
-  fvm_evm::{H160, H256, U256},
+  crate::{execution::ExecutionState, message::StatusCode, system::System},
+  fvm_evm::{H160, U256},
+  fvm_ipld_blockstore::Blockstore,
 };
 
 #[inline]
@@ -16,27 +17,33 @@ fn address_to_u256(v: H160) -> U256 {
 }
 
 #[inline]
-pub fn sload(state: &mut ExecutionState, platform: &Platform) -> Result<(), StatusCode> {
+pub fn sload<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
+) -> Result<(), StatusCode> {
   todo!();
 }
 
 #[inline]
-pub fn sstore(state: &mut ExecutionState, platform: &Platform) -> Result<(), StatusCode> {
+pub fn sstore<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
+) -> Result<(), StatusCode> {
   todo!();
 }
 
 #[inline]
-pub fn balance(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn balance<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }
 
 #[inline]
-pub fn selfbalance(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn selfbalance<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }
@@ -50,33 +57,33 @@ fn ok_or_out_of_gas(gas_left: i64) -> Result<(), StatusCode> {
 }
 
 #[inline]
-pub fn extcodesize(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn extcodesize<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }
 
-pub fn extcodehash(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn extcodehash<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!();
 }
 
 #[inline]
-pub fn create(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn create<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
   create2: bool,
 ) -> Result<(), StatusCode> {
   todo!()
 }
 
 #[inline]
-pub fn selfdestruct(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn selfdestruct<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }

@@ -1,99 +1,108 @@
-use crate::{execution::ExecutionState, message::StatusCode, platform::Platform};
+use {
+  crate::{execution::ExecutionState, message::StatusCode, system::System},
+  fvm_ipld_blockstore::Blockstore,
+};
 
 #[inline]
-pub fn blockhash(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn blockhash<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }
 
 #[inline]
-pub fn caller(state: &mut ExecutionState, platform: &Platform) -> Result<(), StatusCode> {
-  todo!()
-}
-
-#[inline]
-pub fn call_value(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn caller<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }
 
 #[inline]
-pub fn address(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn call_value<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }
 
 #[inline]
-pub fn origin(state: &mut ExecutionState, platform: &Platform) -> Result<(), StatusCode> {
-  todo!()
-}
-
-#[inline]
-pub fn coinbase(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn address<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }
 
 #[inline]
-pub fn gas_price(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn origin<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }
 
 #[inline]
-pub fn timestamp(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn coinbase<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }
 
 #[inline]
-pub fn block_number(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn gas_price<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }
 
 #[inline]
-pub fn difficulty(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn timestamp<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }
 
 #[inline]
-pub fn gas_limit(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn block_number<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }
 
 #[inline]
-pub fn chain_id(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn difficulty<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }
 
 #[inline]
-pub fn base_fee(
-  state: &mut ExecutionState,
-  platform: &Platform,
+pub fn gas_limit<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
+) -> Result<(), StatusCode> {
+  todo!()
+}
+
+#[inline]
+pub fn chain_id<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
+) -> Result<(), StatusCode> {
+  todo!()
+}
+
+#[inline]
+pub fn base_fee<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
 }

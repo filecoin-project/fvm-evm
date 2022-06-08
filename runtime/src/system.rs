@@ -1,7 +1,12 @@
 use {
   crate::message::{CreateMessage, Message, Output},
   bytes::Bytes,
+  cid::Cid,
+  fil_actors_runtime::runtime::Runtime,
   fvm_evm::{H160, U256},
+  fvm_ipld_blockstore::Blockstore,
+  fvm_ipld_hamt::Hamt,
+  fvm_shared::address::Address,
 };
 
 /// State access status (EIP-2929).
@@ -39,9 +44,26 @@ pub enum Call<'a> {
 
 /// Platform Abstraction Layer
 /// that bridges the FVM world to EVM world
-pub struct Platform;
+pub struct System<'r, BS: Blockstore> {
+  state: Hamt<&'r BS, U256, U256>,
+  registry: Address,
+}
 
-impl Platform {
+impl<'r, BS: Blockstore> System<'r, BS> {
+  pub fn new<RT: Runtime<BS>>(
+    state_cid: Cid,
+    runtime: &'r mut RT,
+    registry: Address,
+    self_address: H160,
+  ) -> anyhow::Result<Self> {
+    Ok(Self {
+      registry,
+      state: Hamt::load(&state_cid, runtime.store())?,
+    })
+  }
+}
+
+impl<'r, BS: Blockstore> System<'r, BS> {
   /// Check if an account exists.
   pub fn account_exists(&self, address: H160) -> bool {
     todo!()

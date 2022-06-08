@@ -1,5 +1,12 @@
 use {
-  crate::state::ContractState,
+  crate::{
+    bytecode::Bytecode,
+    execution::{execute, ExecutionState},
+    message::Message,
+    state::ContractState,
+    system::System,
+  },
+  bytes::Bytes,
   fil_actors_runtime::{
     actor_error,
     runtime::{ActorCode, Runtime},
@@ -9,21 +16,24 @@ use {
   fvm_evm::{EthereumAccount, H160, U256},
   fvm_ipld_blockstore::Blockstore,
   fvm_ipld_encoding::{from_slice, RawBytes},
-  fvm_shared::{
-    address::Address,
-    econ::TokenAmount,
-    MethodNum,
-    METHOD_CONSTRUCTOR,
-  },
+  fvm_sdk::{debug::log, ipld},
+  fvm_shared::{address::Address, econ::TokenAmount, MethodNum, METHOD_CONSTRUCTOR},
   num_derive::FromPrimitive,
-  num_traits::{FromPrimitive, Zero},
+  num_traits::FromPrimitive,
 };
+
+/// Maximum allowed EVM bytecode size.
+/// The contract code size limit is 24kB.
+const _MAX_CODE_SIZE: usize = 0x6000;
 
 #[derive(FromPrimitive)]
 #[repr(u64)]
 pub enum Method {
   Constructor = METHOD_CONSTRUCTOR,
-  CreateZeroAddress = 2,
+  InvokeContract = 2,
+  GetStorageValue = 3,
+  GetCodeHash = 4,
+  GetCodeSize = 5,
 }
 
 pub struct EvmRuntimeActor;
@@ -38,40 +48,78 @@ impl EvmRuntimeActor {
     RT: Runtime<BS>,
   {
     rt.validate_immediate_caller_is(std::iter::once(&*INIT_ACTOR_ADDR))?;
-    ContractState::new(bytecode, registry, rt.store())
+    ContractState::new(bytecode, registry, rt.store(), H160::zero())
       .map_err(|e| ActorError::illegal_state(e.to_string()))?;
     Ok(())
   }
 
-  pub fn create_zero_address<BS, RT>(rt: &mut RT) -> Result<(), ActorError>
+  pub fn invoke_contract<BS, RT>(rt: &mut RT) -> Result<RawBytes, ActorError>
   where
     BS: Blockstore,
     RT: Runtime<BS>,
   {
     rt.validate_immediate_caller_accept_any()?;
     let state: ContractState = rt.state()?;
-
-    let eth_addr = H160::zero();
-    let eth_acc = EthereumAccount {
-      nonce: 5,
-      balance: U256::from(999u64),
-      ..Default::default()
+    let message = Message {
+      kind: crate::message::CallKind::Call,
+      is_static: false,
+      depth: 1,
+      gas: 2100,
+      recipient: H160::zero(),
+      sender: H160::zero(),
+      input_data: Bytes::new(),
+      value: U256::zero(),
     };
 
-    const UPSERT_METHOD_NUM: u64 = 3;
+    let bytecode: Vec<_> = from_slice(&ipld::get(&state.bytecode).map_err(|e| {
+      ActorError::illegal_state(format!("failed to load bytecode: {e:?}"))
+    })?)
+    .map_err(|e| ActorError::unspecified(format!("failed to load bytecode: {e:?}")))?;
 
-    let params = RawBytes::serialize((eth_addr, eth_acc))
-      .map_err(|e| ActorError::illegal_argument(e.to_string()))?;
+    // EVM contract bytecode
+    let bytecode = Bytecode::new(&bytecode)
+      .map_err(|e| ActorError::unspecified(format!("invalid bytecode: {e:?}")))?;
 
-    // register new address through cross-contract call
-    rt.send(
-      state.registry,
-      UPSERT_METHOD_NUM,
-      params,
-      TokenAmount::zero(),
-    )?;
+    // the execution state of the EVM, stack, heap, etc.
+    let mut runtime = ExecutionState::new(&message);
 
-    Ok(())
+    // the interface between the EVM interpretter and the FVM system
+    let mut system = System::new(state.state, rt, state.registry, state.self_address)
+      .map_err(|e| ActorError::unspecified(format!("failed to create runtime: {e:?}")))?;
+
+    // invoke the bytecode using the current state and the platform interface
+    let output = execute(&bytecode, &mut runtime, &mut system)
+      .map_err(|e| ActorError::unspecified(format!("contract execution error: {e:?}")))?;
+
+    log(format!("evm output: {output:?}"));
+    Ok(RawBytes::default())
+  }
+
+  pub fn get_storage_value<BS, RT>(rt: &mut RT) -> Result<RawBytes, ActorError>
+  where
+    BS: Blockstore,
+    RT: Runtime<BS>,
+  {
+    rt.validate_immediate_caller_accept_any()?;
+    todo!()
+  }
+
+  pub fn get_code_hash<BS, RT>(rt: &mut RT) -> Result<RawBytes, ActorError>
+  where
+    BS: Blockstore,
+    RT: Runtime<BS>,
+  {
+    rt.validate_immediate_caller_accept_any()?;
+    todo!()
+  }
+
+  pub fn get_code_size<BS, RT>(rt: &mut RT) -> Result<RawBytes, ActorError>
+  where
+    BS: Blockstore,
+    RT: Runtime<BS>,
+  {
+    rt.validate_immediate_caller_accept_any()?;
+    todo!()
   }
 }
 
@@ -91,11 +139,10 @@ impl ActorCode for EvmRuntimeActor {
         Self::constructor(rt, &bytecode, registry)?;
         Ok(RawBytes::default())
       }
-      Some(Method::CreateZeroAddress) => {
-        Self::create_zero_address(rt)?;
-        fvm_sdk::debug::log(format!("created zero address"));
-        Ok(RawBytes::default())
-      }
+      Some(Method::InvokeContract) => Self::invoke_contract(rt),
+      Some(Method::GetStorageValue) => Self::get_storage_value(rt),
+      Some(Method::GetCodeHash) => Self::get_code_hash(rt),
+      Some(Method::GetCodeSize) => Self::get_code_size(rt),
       None => Err(actor_error!(unhandled_message; "Invalid method")),
     }
   }

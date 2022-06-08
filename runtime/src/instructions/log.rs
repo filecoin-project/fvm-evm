@@ -1,10 +1,13 @@
-use crate::{execution::ExecutionState, message::StatusCode, platform::Platform};
+use {
+  crate::{execution::ExecutionState, message::StatusCode, system::System},
+  fvm_ipld_blockstore::Blockstore,
+};
 
 #[inline]
-pub fn log(
-  state: &mut ExecutionState,
-  platform: &Platform,
-  num_topics: usize,
+pub fn log<'r, BS: Blockstore>(
+  _state: &mut ExecutionState,
+  _platform: &'r System<'r, BS>,
+  _num_topics: usize,
 ) -> Result<(), StatusCode> {
   todo!()
 }
