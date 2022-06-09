@@ -1,6 +1,5 @@
 use {
-  crate::stack::Stack,
-  fvm_evm::{uints::i256_cmp, U256},
+  crate::{stack::Stack, uints::i256_cmp, U256},
   std::cmp::Ordering,
 };
 

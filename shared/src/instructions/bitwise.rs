@@ -1,9 +1,7 @@
-use {
-  crate::stack::Stack,
-  fvm_evm::{
-    uints::{i256_sign, two_compl, u256_high, u256_low, Sign},
-    U256,
-  },
+use crate::{
+  stack::Stack,
+  uints::{i256_sign, two_compl, u256_high, u256_low, Sign},
+  U256,
 };
 
 #[inline]
@@ -83,12 +81,11 @@ pub fn sar(stack: &mut Stack) {
 
 #[cfg(test)]
 mod tests {
-  use {super::*, fvm_evm::uints::u128_words_to_u256};
+  use {super::*, crate::uints::u128_words_to_u256};
 
   #[test]
   fn test_instruction_byte() {
-    let value =
-      U256::from_big_endian(&(1u8..=32u8).map(|x| 5 * x).collect::<Vec<u8>>());
+    let value = U256::from_big_endian(&(1u8..=32u8).map(|x| 5 * x).collect::<Vec<u8>>());
 
     for i in 0u16..32 {
       let mut stack = Stack::new();

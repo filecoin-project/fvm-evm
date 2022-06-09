@@ -5,8 +5,8 @@ use {
     message::{CallKind, StatusCode},
     stack::Stack,
     system::System,
+    U256,
   },
-  fvm_evm::U256,
   fvm_ipld_blockstore::Blockstore,
 };
 
@@ -98,7 +98,6 @@ pub fn codecopy(state: &mut ExecutionState, code: &[u8]) -> Result<(), StatusCod
       return Err(StatusCode::OutOfGas);
     }
 
-    // TODO: Add unit tests for each combination of conditions.
     if copy_size > 0 {
       state.memory[region.offset..region.offset + copy_size]
         .copy_from_slice(&code[src..src + copy_size]);

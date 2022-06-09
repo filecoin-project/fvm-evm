@@ -1,6 +1,5 @@
 use {
-  crate::{execution::ExecutionState, message::StatusCode, system::System},
-  fvm_evm::U256,
+  crate::{execution::ExecutionState, message::StatusCode, system::System, U256},
   fvm_ipld_blockstore::Blockstore,
   std::num::NonZeroUsize,
 };

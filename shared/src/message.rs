@@ -1,6 +1,6 @@
 use {
+  crate::{H160, U256},
   bytes::Bytes,
-  fvm_evm::{H160, U256},
   strum_macros::Display,
 };
 

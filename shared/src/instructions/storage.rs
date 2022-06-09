@@ -1,6 +1,5 @@
 use {
-  crate::{execution::ExecutionState, message::StatusCode, system::System},
-  fvm_evm::{H160, U256},
+  crate::{execution::ExecutionState, message::StatusCode, system::System, H160, U256},
   fvm_ipld_blockstore::Blockstore,
 };
 
@@ -75,7 +74,7 @@ pub fn extcodehash<'r, BS: Blockstore>(
 pub fn create<'r, BS: Blockstore>(
   _state: &mut ExecutionState,
   _platform: &'r System<'r, BS>,
-  create2: bool,
+  _create2: bool,
 ) -> Result<(), StatusCode> {
   todo!()
 }

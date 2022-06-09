@@ -3,7 +3,7 @@ use {
     construct_actor,
     create_tester,
     invoke_actor,
-    REGISTRY_ACTOR_ADDRESS,
+    BRIDGE_ACTOR_ADDRESS,
     RUNTIME_ACTOR_ADDRESS,
   },
   anyhow::Result,
@@ -21,14 +21,14 @@ fn cross_contract_smoke() -> Result<()> {
   // construct registry
   let output = construct_actor(
     &mut tester, //
-    REGISTRY_ACTOR_ADDRESS,
+    BRIDGE_ACTOR_ADDRESS,
     RawBytes::default(),
   )?;
 
   // registry constructor does not return anything
   assert_eq!(RawBytes::default(), output);
 
-  let runtime_params = (vec![1u8; 2], REGISTRY_ACTOR_ADDRESS);
+  let runtime_params = (vec![1u8; 2], BRIDGE_ACTOR_ADDRESS);
 
   let output = construct_actor(
     &mut tester, //
@@ -44,7 +44,7 @@ fn cross_contract_smoke() -> Result<()> {
   let eth_account = from_slice(&invoke_actor(
     &mut tester,
     accounts[0].1,
-    REGISTRY_ACTOR_ADDRESS,
+    BRIDGE_ACTOR_ADDRESS,
     RETREIVE_METHOD_NUM,
     RawBytes::serialize(H160::zero())?,
     0,
@@ -70,7 +70,7 @@ fn cross_contract_smoke() -> Result<()> {
   let eth_account = from_slice(&invoke_actor(
     &mut tester,
     accounts[0].1,
-    REGISTRY_ACTOR_ADDRESS,
+    BRIDGE_ACTOR_ADDRESS,
     RETREIVE_METHOD_NUM,
     RawBytes::serialize(H160::zero())?,
     2,

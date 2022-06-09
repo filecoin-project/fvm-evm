@@ -5,8 +5,8 @@ use {
     execution::ExecutionState,
     message::StatusCode,
     stack::Stack,
+    U256,
   },
-  fvm_evm::U256,
 };
 
 #[inline]

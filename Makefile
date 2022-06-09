@@ -9,7 +9,7 @@ build:
 
 copy: build
 	@mkdir -p wasm && \
-	 cp target/debug/wbuild/fvm-evm-registry/fvm_evm_registry.compact.wasm wasm/fvm_evm_registry.compact.wasm && \
+	 cp target/debug/wbuild/fvm-evm-bridge/fvm_evm_bridge.compact.wasm wasm/fvm_evm_bridge.compact.wasm && \
 	 cp target/debug/wbuild/fvm-evm-runtime/fvm_evm_runtime.compact.wasm wasm/fvm_evm_runtime.compact.wasm 
 
 clean:

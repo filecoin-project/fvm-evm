@@ -1,10 +1,10 @@
-use {
-  crate::{execution::ExecutionState, message::StatusCode, stack::Stack},
-  fvm_evm::{
-    uints::{i256_div, i256_mod, log2floor, u256_high, u256_low},
-    U256,
-    U512,
-  },
+use crate::{
+  execution::ExecutionState,
+  message::StatusCode,
+  stack::Stack,
+  uints::{i256_div, i256_mod, log2floor, u256_high, u256_low},
+  U256,
+  U512,
 };
 
 #[inline]
@@ -139,8 +139,7 @@ pub fn signextend(stack: &mut Stack) {
     let bit_index = (8 * u256_low(a) as u8 + 7) as u16;
     let hi = u256_high(*b);
     let lo = u256_low(*b);
-    let bit =
-      if bit_index > 0x7f { hi } else { lo } & (1 << (bit_index % 128)) != 0;
+    let bit = if bit_index > 0x7f { hi } else { lo } & (1 << (bit_index % 128)) != 0;
     let mask = (U256::from(1) << bit_index) - U256::from(1);
     *b = if bit { *b | !mask } else { *b & mask }
   }

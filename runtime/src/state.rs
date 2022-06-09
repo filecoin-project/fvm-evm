@@ -14,9 +14,9 @@ use {
 /// This runs on the fvm-evm-runtime actor code cid.
 #[derive(Debug, Serialize_tuple, Deserialize_tuple)]
 pub struct ContractState {
-  /// Address of the registry actor that stores EVM <--> FVM
+  /// Address of the bridge actor that stores EVM <--> FVM
   /// account mappings.
-  pub registry: Address,
+  pub bridge: Address,
 
   /// The EVM contract bytecode resulting from calling the
   /// initialization code by the constructor.
@@ -41,12 +41,12 @@ impl ContractState {
   /// in the state HAMT.
   pub fn new<'r, BS: Blockstore>(
     bytecode: &(impl AsRef<[u8]> + ?Sized),
-    registry: Address,
+    bridge: Address,
     blockstore: BS,
     self_address: H160,
   ) -> anyhow::Result<Self> {
     let this = Self {
-      registry,
+      bridge,
       self_address,
       bytecode: ipld::put(
         Code::Blake2b256.into(),

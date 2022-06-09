@@ -1,4 +1,4 @@
-use {crate::stack::Stack, fvm_evm::U256};
+use crate::{stack::Stack, U256};
 
 #[inline]
 pub(crate) fn push<const LEN: usize>(stack: &mut Stack, code: &[u8]) -> usize {

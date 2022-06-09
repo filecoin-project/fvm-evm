@@ -6,7 +6,7 @@ use {
 };
 
 #[cfg(test)]
-mod registry;
+mod bridge;
 
 #[cfg(test)]
 mod runtime;
@@ -30,13 +30,13 @@ pub const INIT_ACTOR_ADDRESS: Address = Address::new_id(1);
 const RUNTIME_ACTOR_ADDRESS: Address = Address::new_id(10001);
 const RUNTIME_ACTOR_WASM_PATH: &str = "../wasm/fvm_evm_runtime.compact.wasm";
 
-const REGISTRY_ACTOR_ADDRESS: Address = Address::new_id(10002);
-const REGISTRY_ACTOR_WASM_PATH: &str = "../wasm/fvm_evm_registry.compact.wasm";
+const BRIDGE_ACTOR_ADDRESS: Address = Address::new_id(10002);
+const BRIDGE_ACTOR_WASM_PATH: &str = "../wasm/fvm_evm_bridge.compact.wasm";
 
 /// Creates an FVM simulator with both actors loaded from WASM
 /// ready to execute messages from external sources
-pub fn create_tester<const N: usize>(
-) -> Result<(Tester<MemoryBlockstore>, [Account; N])> {
+pub fn create_tester<const N: usize>() -> Result<(Tester<MemoryBlockstore>, [Account; N])>
+{
   let mut tester = Tester::new(
     NetworkVersion::V16,
     StateTreeVersion::V4,
@@ -46,7 +46,7 @@ pub fn create_tester<const N: usize>(
   let accounts: [Account; N] = tester.create_accounts()?;
 
   let runtime_actor_wasm = fs::read(RUNTIME_ACTOR_WASM_PATH)?;
-  let registry_actor_wasm = fs::read(REGISTRY_ACTOR_WASM_PATH)?;
+  let bridge_actor_wasm = fs::read(BRIDGE_ACTOR_WASM_PATH)?;
 
   #[derive(Debug, Serialize, Deserialize)]
   struct State {
@@ -64,9 +64,9 @@ pub fn create_tester<const N: usize>(
   )?;
 
   tester.set_actor_from_bin(
-    &registry_actor_wasm,
+    &bridge_actor_wasm,
     state_root,
-    REGISTRY_ACTOR_ADDRESS,
+    BRIDGE_ACTOR_ADDRESS,
     BigInt::zero(),
   )?;
 

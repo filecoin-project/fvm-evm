@@ -1,9 +1,12 @@
 use {
-  crate::message::{CreateMessage, Message, Output},
+  crate::{
+    message::{CreateMessage, Message, Output},
+    H160,
+    U256,
+  },
   bytes::Bytes,
   cid::Cid,
   fil_actors_runtime::runtime::Runtime,
-  fvm_evm::{H160, U256},
   fvm_ipld_blockstore::Blockstore,
   fvm_ipld_hamt::Hamt,
   fvm_shared::address::Address,
@@ -46,18 +49,18 @@ pub enum Call<'a> {
 /// that bridges the FVM world to EVM world
 pub struct System<'r, BS: Blockstore> {
   state: Hamt<&'r BS, U256, U256>,
-  registry: Address,
+  bridge: Address,
 }
 
 impl<'r, BS: Blockstore> System<'r, BS> {
   pub fn new<RT: Runtime<BS>>(
     state_cid: Cid,
     runtime: &'r mut RT,
-    registry: Address,
+    bridge: Address,
     self_address: H160,
   ) -> anyhow::Result<Self> {
     Ok(Self {
-      registry,
+      bridge,
       state: Hamt::load(&state_cid, runtime.store())?,
     })
   }

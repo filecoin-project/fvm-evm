@@ -1,4 +1,4 @@
-use {arrayvec::ArrayVec, fvm_evm::U256, serde::Serialize};
+use {arrayvec::ArrayVec, crate::U256, serde::Serialize};
 
 /// Ethereum Yellow Paper (9.1)
 pub const MAX_STACK_SIZE: usize = 1024;

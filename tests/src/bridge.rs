@@ -1,22 +1,17 @@
 use {
-  crate::{
-    construct_actor,
-    create_tester,
-    invoke_actor,
-    REGISTRY_ACTOR_ADDRESS,
-  },
+  crate::{construct_actor, create_tester, invoke_actor, BRIDGE_ACTOR_ADDRESS},
   anyhow::Result,
   fvm_evm::{EthereumAccount, H160, U256},
   fvm_ipld_encoding::{from_slice, RawBytes},
 };
 
 #[test]
-fn registry_smoke() -> Result<()> {
+fn bridge_smoke() -> Result<()> {
   let (mut tester, accounts) = create_tester::<1>()?;
 
   let output = construct_actor(
     &mut tester, //
-    REGISTRY_ACTOR_ADDRESS,
+    BRIDGE_ACTOR_ADDRESS,
     RawBytes::default(),
   )?;
 
@@ -29,7 +24,7 @@ fn registry_smoke() -> Result<()> {
   let eth_account = from_slice(&invoke_actor(
     &mut tester,
     accounts[0].1,
-    REGISTRY_ACTOR_ADDRESS,
+    BRIDGE_ACTOR_ADDRESS,
     RETREIVE_METHOD_NUM,
     RawBytes::serialize(H160::zero())?,
     0,
@@ -51,7 +46,7 @@ fn registry_smoke() -> Result<()> {
   let ret = invoke_actor(
     &mut tester,
     accounts[0].1,
-    REGISTRY_ACTOR_ADDRESS,
+    BRIDGE_ACTOR_ADDRESS,
     UPSERT_METHOD_NUM,
     RawBytes::serialize(&(eth_addr, eth_acc))?,
     1,
@@ -64,7 +59,7 @@ fn registry_smoke() -> Result<()> {
   let eth_account = from_slice(&invoke_actor(
     &mut tester,
     accounts[0].1,
-    REGISTRY_ACTOR_ADDRESS,
+    BRIDGE_ACTOR_ADDRESS,
     RETREIVE_METHOD_NUM,
     RawBytes::serialize(H160::zero())?,
     2,

@@ -4,7 +4,6 @@ pub mod boolean;
 pub mod call;
 pub mod context;
 pub mod control;
-pub mod external;
 pub mod hash;
 pub mod log;
 pub mod memory;
