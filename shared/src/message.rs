@@ -1,6 +1,8 @@
 use {
   crate::{H160, U256},
   bytes::Bytes,
+  fvm_ipld_encoding::Cbor,
+  serde::{Deserialize, Serialize},
   strum_macros::Display,
 };
 
@@ -89,7 +91,7 @@ pub struct Output {
 
 /// Message status code.
 #[must_use]
-#[derive(Clone, Copy, Debug, Display, PartialEq)]
+#[derive(Clone, Debug, Display, PartialEq, Serialize, Deserialize)]
 pub enum StatusCode {
   /// Execution finished with success.
   #[strum(serialize = "success")]
@@ -168,5 +170,7 @@ pub enum StatusCode {
 
   /// EVM implementation generic internal error.
   #[strum(serialize = "internal error")]
-  InternalError(&'static str),
+  InternalError(String),
 }
+
+impl Cbor for StatusCode {}

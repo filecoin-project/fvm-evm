@@ -4,14 +4,14 @@ use {
 };
 
 #[inline]
-fn u256_to_address(v: U256) -> H160 {
+fn _u256_to_address(v: U256) -> H160 {
   let mut bytes = [0u8; 32];
   v.to_big_endian(&mut bytes);
   H160::from_slice(&bytes)
 }
 
 #[inline]
-fn address_to_u256(v: H160) -> U256 {
+fn _address_to_u256(v: H160) -> U256 {
   U256::from_big_endian(v.as_bytes())
 }
 
@@ -48,7 +48,7 @@ pub fn selfbalance<'r, BS: Blockstore>(
 }
 
 #[inline(always)]
-fn ok_or_out_of_gas(gas_left: i64) -> Result<(), StatusCode> {
+fn _ok_or_out_of_gas(gas_left: i64) -> Result<(), StatusCode> {
   match gas_left >= 0 {
     true => Ok(()),
     false => Err(StatusCode::OutOfGas),

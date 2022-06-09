@@ -48,8 +48,9 @@ pub enum Call<'a> {
 /// Platform Abstraction Layer
 /// that bridges the FVM world to EVM world
 pub struct System<'r, BS: Blockstore> {
-  state: Hamt<&'r BS, U256, U256>,
-  bridge: Address,
+  _state: Hamt<&'r BS, U256, U256>,
+  _bridge: Address,
+  _self_address: H160,
 }
 
 impl<'r, BS: Blockstore> System<'r, BS> {
@@ -60,91 +61,102 @@ impl<'r, BS: Blockstore> System<'r, BS> {
     self_address: H160,
   ) -> anyhow::Result<Self> {
     Ok(Self {
-      bridge,
-      state: Hamt::load(&state_cid, runtime.store())?,
+      _bridge: bridge,
+      _self_address: self_address,
+      _state: Hamt::load(&state_cid, runtime.store())?,
     })
   }
 }
 
 impl<'r, BS: Blockstore> System<'r, BS> {
   /// Check if an account exists.
-  pub fn account_exists(&self, address: H160) -> bool {
+  pub fn account_exists(&self, _address: H160) -> bool {
     todo!()
   }
 
   /// Get value of a storage key.
   ///
   /// Returns `Ok(U256::zero())` if does not exist.
-  pub fn get_storage(&self, address: H160, key: U256) -> U256 {
+  pub fn get_storage(&self, _address: H160, _key: U256) -> U256 {
     todo!();
   }
 
   /// Set value of a storage key.
-  pub fn set_storage(&mut self, address: H160, key: U256, value: U256) -> StorageStatus {
+  pub fn set_storage(
+    &mut self,
+    _address: H160,
+    _key: U256,
+    _value: U256,
+  ) -> StorageStatus {
     todo!()
   }
 
   /// Get balance of an account.
   ///
   /// Returns `Ok(0)` if account does not exist.
-  pub fn get_balance(&mut self, address: H160) -> U256 {
+  pub fn get_balance(&mut self, _address: H160) -> U256 {
     todo!()
   }
 
   /// Get code size of an account.
   ///
   /// Returns `Ok(0)` if account does not exist.
-  pub fn get_code_size(&mut self, address: H160) -> U256 {
+  pub fn get_code_size(&mut self, _address: H160) -> U256 {
     todo!()
   }
 
   /// Get code hash of an account.
   ///
   /// Returns `Ok(0)` if account does not exist.
-  pub fn get_code_hash(&mut self, address: H160) -> U256 {
+  pub fn get_code_hash(&mut self, _address: H160) -> U256 {
     todo!();
   }
 
   /// Copy code of an account.
   ///
   /// Returns `Ok(0)` if offset is invalid.
-  pub fn copy_code(&mut self, address: H160, offset: usize, buffer: &mut [u8]) -> usize {
+  pub fn copy_code(
+    &mut self,
+    _address: H160,
+    _offset: usize,
+    _buffer: &mut [u8],
+  ) -> usize {
     todo!()
   }
 
   /// Self-destruct account.
-  pub fn selfdestruct(&mut self, address: H160, beneficiary: H160) {
+  pub fn selfdestruct(&mut self, _address: H160, _beneficiary: H160) {
     todo!()
   }
 
   /// Call to another account.
-  pub fn call(&mut self, msg: Call) -> Output {
+  pub fn call(&mut self, _msg: Call) -> Output {
     todo!();
   }
 
   /// Get block hash.
   ///
   /// Returns `Ok(U256::zero())` if block does not exist.
-  pub fn get_block_hash(&mut self, block_number: u64) -> U256 {
+  pub fn get_block_hash(&mut self, _block_number: u64) -> U256 {
     todo!();
   }
 
   /// Emit a log.
-  pub fn emit_log(&mut self, address: H160, data: Bytes, topics: &[U256]) {
+  pub fn emit_log(&mut self, _address: H160, _data: Bytes, _topics: &[U256]) {
     todo!();
   }
 
   /// Mark account as warm, return previous access status.
   ///
   /// Returns `Ok(AccessStatus::Cold)` if account does not exist.
-  pub fn access_account(&mut self, address: H160) -> AccessStatus {
+  pub fn access_account(&mut self, _address: H160) -> AccessStatus {
     todo!();
   }
 
   /// Mark storage key as warm, return previous access status.
   ///
   /// Returns `Ok(AccessStatus::Cold)` if account does not exist.
-  pub fn access_storage(&mut self, address: H160, key: U256) -> AccessStatus {
+  pub fn access_storage(&mut self, _address: H160, _key: U256) -> AccessStatus {
     todo!();
   }
 }

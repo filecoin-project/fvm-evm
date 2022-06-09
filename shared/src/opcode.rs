@@ -26,20 +26,20 @@ pub struct OpCode {
   pub name: &'static str,
 }
 
-impl OpCode {
-  #[inline]
-  pub const fn to_u8(self) -> u8 {
-    self.code
-  }
-
-  #[inline]
-  pub const fn to_usize(self) -> usize {
-    self.to_u8() as usize
+impl From<OpCode> for u8 {
+  fn from(op: OpCode) -> Self {
+    op.code
   }
 }
 
-const COLD_SLOAD_COST: u16 = 2100;
-const COLD_ACCOUNT_ACCESS_COST: u16 = 2600;
+impl PartialEq<u8> for OpCode {
+  fn eq(&self, other: &u8) -> bool {
+    self.code == *other
+  }
+}
+
+const _COLD_SLOAD_COST: u16 = 2100;
+const _COLD_ACCOUNT_ACCESS_COST: u16 = 2600;
 const WARM_STORAGE_READ_COST: u16 = 100;
 
 impl OpCode {
@@ -1204,7 +1204,7 @@ impl TryFrom<u8> for OpCode {
     ];
 
     for op in OPCODES {
-      if op.to_u8() == value {
+      if op == value {
         return Ok(op);
       }
     }

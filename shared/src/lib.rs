@@ -7,6 +7,7 @@ mod instructions;
 mod memory;
 mod message;
 mod opcode;
+mod output;
 mod stack;
 mod system;
 mod transaction;
@@ -16,8 +17,10 @@ pub use {
   account::{AccountKind, EthereumAccount},
   bytecode::Bytecode,
   execution::{execute, ExecutionState},
-  message::{CallKind, Message},
+  message::{CallKind, Message, StatusCode},
+  output::Output,
   system::System,
+  transaction::SignedTransaction,
   uints::{H160, H256, U256, U512},
 };
 

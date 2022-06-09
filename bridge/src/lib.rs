@@ -5,7 +5,7 @@ use {
     ActorError,
     INIT_ACTOR_ADDR,
   },
-  fvm_evm::{abort, EthereumAccount, H160},
+  fvm_evm::{abort, EthereumAccount, Output, StatusCode, H160},
   fvm_ipld_blockstore::Blockstore,
   fvm_ipld_encoding::{from_slice, RawBytes},
   fvm_ipld_hamt::Hamt,
@@ -24,6 +24,7 @@ pub enum Method {
   Constructor = METHOD_CONSTRUCTOR,
   RetreiveAccount = 2,
   UpsertAccount = 3,
+  InvokeMessage = 4,
 }
 
 pub struct RegistryActor;
@@ -69,8 +70,7 @@ impl RegistryActor {
       .flush()
       .map_err(|e| ActorError::illegal_state(e.to_string()))?;
 
-    sself::set_root(&new_root)
-      .map_err(|e| ActorError::illegal_state(e.to_string()))?;
+    sself::set_root(&new_root).map_err(|e| ActorError::illegal_state(e.to_string()))?;
 
     Ok(())
   }
@@ -101,6 +101,26 @@ impl RegistryActor {
       None => EthereumAccount::default(),
     })
   }
+
+  pub fn invoke<BS, RT>(rt: &mut RT, rlp: &[u8]) -> Result<Output, ActorError>
+  where
+    BS: Blockstore,
+    RT: Runtime<BS>,
+  {
+    let transaction = fvm_evm::SignedTransaction::try_from(rlp)
+      .map_err(|e| ActorError::illegal_argument(format!("{e:?}")))?;
+
+    let sender = transaction
+      .sender_address()
+      .map_err(|e| ActorError::illegal_argument(format!("{e:?}")))?;
+
+    Ok(Output {
+      logs: vec![sender.to_string()],
+      gas_left: 0,
+      status_code: StatusCode::Success,
+    })
+    
+  }
 }
 
 impl ActorCode for RegistryActor {
@@ -127,6 +147,11 @@ impl ActorCode for RegistryActor {
         let (address, account) = from_slice(&params)?;
         Self::upsert(rt, address, account)?;
         Ok(RawBytes::default())
+      }
+      Some(Method::InvokeMessage) => {
+        let rlp: Vec<u8> = from_slice(&params)?;
+        let output = Self::invoke(rt, &rlp)?;
+        Ok(RawBytes::serialize(output)?)
       }
       None => Err(actor_error!(unhandled_message; "Invalid method")),
     }
