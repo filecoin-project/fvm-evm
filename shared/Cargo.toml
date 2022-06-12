@@ -31,3 +31,7 @@ fvm_shared = { path = "../../ref-fvm/shared", default-features = false }
 fil_actors_runtime = { git = "https://github.com/filecoin-project/builtin-actors.git", features = [
   "fil-actor",
 ] }
+rlp = { version = "0.5.1", default-features = false }
+
+[dev-dependencies]
+hex-literal = "0.3.4"
