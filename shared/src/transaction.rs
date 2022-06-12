@@ -1,6 +1,9 @@
 use {
   crate::{H160, H256, U256},
   bytes::Bytes,
+  fil_actors_runtime::ActorError,
+  fvm_sdk::crypto::recover_public_key,
+  fvm_shared::crypto::signature::SECP_PUB_LEN,
   sha3::{Digest, Keccak256},
 };
 
@@ -71,28 +74,24 @@ pub struct SignedTransaction {
 }
 
 #[derive(Debug)]
-pub struct RLPError;
+pub enum RLPError {
+  EmptyRlp,
+  InvalidLength,
+}
 
 impl TryFrom<&[u8]> for SignedTransaction {
   type Error = RLPError;
 
-  fn try_from(_value: &[u8]) -> Result<Self, Self::Error> {
-    Ok(SignedTransaction {
-      signature: TransactionSignature {
-        odd_y_parity: true,
-        r: H256::zero(),
-        s: H256::zero(),
-      },
-      transaction: Transaction::Legacy {
-        chain_id: Some(1),
-        nonce: 1,
-        gas_price: U256::zero(),
-        gas_limit: 1,
-        action: TransactionAction::Create,
-        value: U256::zero(),
-        input: Bytes::new(),
-      },
-    })
+  fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    if value.is_empty() {
+      return Err(RLPError::EmptyRlp);
+    }
+
+    match value[0] {
+      0x01 => parse_eip2930_transaction(value),
+      0x02 => parse_eip1559_transaction(value),
+      _ => parse_legacy_transaction(value),
+    }
   }
 }
 
@@ -100,33 +99,99 @@ impl SignedTransaction {
   /// The secp256k1 public key of the transaction sender.
   ///
   /// This public key can used to derive the equivalent Filecoin account
-  pub fn sender_public_key(
-    &self,
-  ) -> Result<libsecp256k1::PublicKey, libsecp256k1::Error> {
-    let mut sig = [0u8; 64];
+  pub fn sender_public_key(&self) -> Result<[u8; SECP_PUB_LEN], ActorError> {
+    let mut sig = [0u8; 65];
     sig[..32].copy_from_slice(self.signature.r.as_bytes());
     sig[32..].copy_from_slice(self.signature.s.as_bytes());
-
-    libsecp256k1::recover(
-      &libsecp256k1::Message::parse_slice(self.transaction.hash().as_bytes())?,
-      &libsecp256k1::Signature::parse_standard(&sig)?,
-      &libsecp256k1::RecoveryId::parse(self.signature.odd_y_parity as u8)?,
-    )
+    sig[64] = self.signature.odd_y_parity as u8;
+    recover_public_key(&self.transaction.hash().to_fixed_bytes(), &sig).map_err(|e| {
+      ActorError::illegal_argument(format!("failed to recover public key: {e:?}"))
+    })
   }
 
   /// Ethereum sender address which is 20-bytes trimmed keccak256(pubkey)
-  pub fn sender_address(&self) -> Result<H160, libsecp256k1::Error> {
+  pub fn sender_address(&self) -> Result<H160, ActorError> {
     let pubkey = self.sender_public_key()?;
-    let address_slice = &Keccak256::digest(&pubkey.serialize()[1..])[12..];
+    let address_slice = &Keccak256::digest(&pubkey[1..])[12..];
     Ok(H160::from_slice(address_slice))
   }
+}
+
+fn parse_legacy_transaction(bytes: &[u8]) -> Result<SignedTransaction, RLPError> {
+  Ok(SignedTransaction {
+    signature: TransactionSignature {
+      odd_y_parity: true,
+      r: H256::zero(),
+      s: H256::zero(),
+    },
+    transaction: Transaction::Legacy {
+      chain_id: Some(1),
+      nonce: 1,
+      gas_price: U256::zero(),
+      gas_limit: 1,
+      action: TransactionAction::Create,
+      value: U256::zero(),
+      input: Bytes::new(),
+    },
+  })
+}
+
+fn parse_eip2930_transaction(_bytes: &[u8]) -> Result<SignedTransaction, RLPError> {
+  Ok(SignedTransaction {
+    signature: TransactionSignature {
+      odd_y_parity: true,
+      r: H256::zero(),
+      s: H256::zero(),
+    },
+    transaction: Transaction::EIP2930 {
+      chain_id: 1,
+      nonce: 1,
+      gas_price: U256::zero(),
+      gas_limit: 1,
+      action: TransactionAction::Create,
+      value: U256::zero(),
+      input: Bytes::new(),
+      access_list: vec![],
+    },
+  })
+}
+
+fn parse_eip1559_transaction(_bytes: &[u8]) -> Result<SignedTransaction, RLPError> {
+  Ok(SignedTransaction {
+    signature: TransactionSignature {
+      odd_y_parity: true,
+      r: H256::zero(),
+      s: H256::zero(),
+    },
+    transaction: Transaction::EIP1559 {
+      chain_id: 1,
+      nonce: 1,
+      gas_limit: 1,
+      action: TransactionAction::Create,
+      value: U256::zero(),
+      input: Bytes::new(),
+      max_priority_fee_per_gas: U256::zero(),
+      max_fee_per_gas: U256::zero(),
+      access_list: vec![],
+    },
+  })
 }
 
 #[cfg(test)]
 mod tests {
 
   #[test]
-  fn decode_rlp_transaction() -> Result<(), ()> {
-    Ok(())
+  fn decode_legacy_transaction() {
+    todo!()
+  }
+
+  #[test]
+  fn decode_eip2930_transaction() {
+    todo!()
+  }
+
+  #[test]
+  fn decode_eip1559_transaction() {
+    todo!()
   }
 }
