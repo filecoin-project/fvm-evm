@@ -35,3 +35,6 @@ rlp = { version = "0.5.1", default-features = false }
 
 [dev-dependencies]
 hex-literal = "0.3.4"
+fvm_shared = { path = "../../ref-fvm/shared", default-features = false, features = [
+  "crypto",
+] }

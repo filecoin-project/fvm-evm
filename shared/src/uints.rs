@@ -29,12 +29,55 @@ macro_rules! impl_hamt_hash {
   };
 }
 
+macro_rules! impl_rlp_codec_hash {
+  ($type:ident) => {
+    impl rlp::Encodable for $type {
+      fn rlp_append(&self, s: &mut rlp::RlpStream) {
+        let bytes = self.as_fixed_bytes();
+        s.encoder().encode_value(&bytes[..]);
+      }
+    }
+    impl rlp::Decodable for $type {
+      fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        rlp
+          .decoder()
+          .decode_value(|bytes| Ok($type::from_slice(bytes)))
+      }
+    }
+  };
+}
+
+macro_rules! impl_rlp_codec_uint {
+  ($type:ident, $bytes_len: expr) => {
+    impl rlp::Encodable for $type {
+      fn rlp_append(&self, s: &mut rlp::RlpStream) {
+        let mut bytes = [0u8; $bytes_len];
+        self.to_big_endian(&mut bytes);
+        s.encoder().encode_value(&bytes);
+      }
+    }
+    impl rlp::Decodable for $type {
+      fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        rlp
+          .decoder()
+          .decode_value(|bytes| Ok($type::from_big_endian(bytes)))
+      }
+    }
+  };
+}
+
 // Hamt support
 impl_hamt_hash!(H160);
 impl_hamt_hash!(H256);
 
 impl_hamt_hash!(U256);
 impl_hamt_hash!(U512);
+
+// RLP Support
+impl_rlp_codec_hash!(H160);
+impl_rlp_codec_hash!(H256);
+impl_rlp_codec_uint!(U256, 32);
+impl_rlp_codec_uint!(U512, 64);
 
 #[inline(always)]
 pub fn u256_high(val: U256) -> u128 {
@@ -121,10 +164,7 @@ pub fn i256_div(mut first: U256, mut second: U256) -> U256 {
     return U256::zero();
   }
   let first_sign = i256_sign::<true>(&mut first);
-  if first_sign == Sign::Minus
-    && first == min_negative_value
-    && second == U256::from(1)
-  {
+  if first_sign == Sign::Minus && first == min_negative_value && second == U256::from(1) {
     return two_compl(min_negative_value);
   }
 
