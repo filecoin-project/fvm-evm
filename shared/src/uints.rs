@@ -29,6 +29,11 @@ macro_rules! impl_hamt_hash {
   };
 }
 
+fn zeroless_view(v: &impl AsRef<[u8]>) -> &[u8] {
+  let v = v.as_ref();
+  &v[v.iter().take_while(|&&b| b == 0).count()..]
+}
+
 macro_rules! impl_rlp_codec_hash {
   ($type:ident) => {
     impl rlp::Encodable for $type {
@@ -53,7 +58,8 @@ macro_rules! impl_rlp_codec_uint {
       fn rlp_append(&self, s: &mut rlp::RlpStream) {
         let mut bytes = [0u8; $bytes_len];
         self.to_big_endian(&mut bytes);
-        s.encoder().encode_value(&bytes);
+        let zbytes = zeroless_view(&bytes);
+        s.encoder().encode_value(&zbytes);
       }
     }
     impl rlp::Decodable for $type {

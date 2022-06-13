@@ -7,10 +7,10 @@ use {
   fvm_shared::crypto::signature::SECP_PUB_LEN,
   rlp::{DecoderError, Rlp, RlpStream},
   sha3::{Digest, Keccak256},
-  std::ops::Deref,
+  std::{fmt::Debug, ops::Deref},
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum TransactionAction {
   Call(H160),
   Create,
@@ -41,10 +41,27 @@ impl rlp::Decodable for TransactionAction {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct AccessListItem {
   pub address: H160,
   pub slots: Vec<H256>,
+}
+
+impl rlp::Encodable for AccessListItem {
+  fn rlp_append(&self, s: &mut RlpStream) {
+    s.begin_list(2);
+    s.append(&self.address);
+    s.append_list(&self.slots);
+  }
+}
+
+impl rlp::Decodable for AccessListItem {
+  fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+    Ok(Self {
+      address: rlp.val_at(0)?,
+      slots: rlp.list_at(1)?,
+    })
+  }
 }
 
 #[derive(Debug)]
@@ -89,6 +106,7 @@ pub enum Transaction {
 
 impl Transaction {
   pub fn hash(&self) -> H256 {
+    let mut s = RlpStream::new();
     match self {
       Transaction::Legacy {
         chain_id,
@@ -99,7 +117,6 @@ impl Transaction {
         value,
         input,
       } => {
-        let mut s = RlpStream::new();
         if let Some(chain_id) = chain_id {
           s.begin_list(9);
           s.append(nonce);
@@ -120,7 +137,6 @@ impl Transaction {
           s.append(value);
           s.append(input);
         }
-        H256::from_slice(Keccak256::digest(s.as_raw()).as_slice())
       }
       Transaction::EIP2930 {
         chain_id,
@@ -131,7 +147,18 @@ impl Transaction {
         value,
         input,
         access_list,
-      } => todo!(),
+      } => {
+        s.append_raw(&[1u8], 0);
+        s.begin_list(8);
+        s.append(chain_id);
+        s.append(nonce);
+        s.append(gas_price);
+        s.append(gas_limit);
+        s.append(action);
+        s.append(value);
+        s.append(input);
+        s.append_list(access_list);
+      }
       Transaction::EIP1559 {
         chain_id,
         nonce,
@@ -142,8 +169,22 @@ impl Transaction {
         value,
         input,
         access_list,
-      } => todo!(),
-    }
+      } => {
+        s.append_raw(&[2u8], 0);
+        s.begin_list(9);
+        s.append(chain_id);
+        s.append(nonce);
+        s.append(max_priority_fee_per_gas);
+        s.append(max_fee_per_gas);
+        s.append(gas_limit);
+        s.append(action);
+        s.append(value);
+        s.append(input);
+        s.append_list(access_list);
+      }
+    };
+
+    H256::from_slice(Keccak256::digest(s.as_raw()).as_slice())
   }
 }
 
@@ -159,7 +200,7 @@ impl Deref for TransactionRecoveryId {
 }
 
 impl TransactionRecoveryId {
-  pub fn standard(&self) -> u8 {
+  pub fn odd_y_parity(&self) -> u8 {
     if self.0 == 27 || self.0 == 28 || self.0 > 36 {
       ((self.0 - 1) % 2) as u8
     } else {
@@ -181,24 +222,6 @@ pub struct TransactionSignature {
   v: TransactionRecoveryId,
   r: H256,
   s: H256,
-}
-
-impl rlp::Encodable for TransactionSignature {
-  fn rlp_append(&self, s: &mut RlpStream) {
-    s.append(&self.v.0);
-    s.append(&self.r);
-    s.append(&self.s);
-  }
-}
-
-impl rlp::Decodable for TransactionSignature {
-  fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
-    Ok(Self {
-      v: TransactionRecoveryId(rlp.val_at(0)?),
-      r: rlp.val_at(1)?,
-      s: rlp.val_at(2)?,
-    })
-  }
 }
 
 #[derive(Debug)]
@@ -224,6 +247,89 @@ impl TryFrom<&[u8]> for SignedTransaction {
 }
 
 impl SignedTransaction {
+  pub fn hash(&self) -> H256 {
+    let bytes: Vec<_> = match &self.transaction {
+      Transaction::Legacy {
+        nonce,
+        gas_price,
+        gas_limit,
+        action,
+        value,
+        input,
+        ..
+      } => {
+        let mut s = RlpStream::new();
+        s.begin_list(9);
+        s.append(nonce);
+        s.append(gas_price);
+        s.append(gas_limit);
+        s.append(action);
+        s.append(value);
+        s.append(input);
+        s.append(&self.signature.v.0);
+        s.append(&self.signature.r);
+        s.append(&self.signature.s);
+        s.as_raw().to_vec()
+      }
+      Transaction::EIP2930 {
+        chain_id,
+        nonce,
+        gas_price,
+        gas_limit,
+        action,
+        value,
+        input,
+        access_list,
+      } => {
+        let mut s = RlpStream::new();
+        s.append_raw(&[1u8], 0);
+        s.begin_list(11);
+        s.append(chain_id);
+        s.append(nonce);
+        s.append(gas_price);
+        s.append(gas_limit);
+        s.append(action);
+        s.append(value);
+        s.append(input);
+        s.append_list(access_list);
+        s.append(&self.signature.v.0);
+        s.append(&self.signature.r);
+        s.append(&self.signature.s);
+        s.as_raw().to_vec()
+      }
+      Transaction::EIP1559 {
+        chain_id,
+        nonce,
+        max_priority_fee_per_gas,
+        max_fee_per_gas,
+        gas_limit,
+        action,
+        value,
+        input,
+        access_list,
+      } => {
+        let mut s = RlpStream::new();
+        s.append_raw(&[2u8], 0);
+        s.begin_list(12);
+        s.append(chain_id);
+        s.append(nonce);
+        s.append(max_priority_fee_per_gas);
+        s.append(max_fee_per_gas);
+        s.append(gas_limit);
+        s.append(action);
+        s.append(value);
+        s.append(input);
+        s.append_list(access_list);
+        s.append(&self.signature.v.0);
+        s.append(&self.signature.r);
+        s.append(&self.signature.s);
+        s.as_raw().to_vec()
+      }
+    };
+
+    H256::from_slice(Keccak256::digest(bytes).as_slice())
+  }
+
   /// The secp256k1 public key of the transaction sender.
   ///
   /// This public key can used to derive the equivalent Filecoin account
@@ -231,7 +337,12 @@ impl SignedTransaction {
     let mut sig = [0u8; 65];
     sig[..32].copy_from_slice(self.signature.r.as_bytes());
     sig[32..64].copy_from_slice(self.signature.s.as_bytes());
-    sig[64] = self.signature.v.standard();
+
+    if matches!(self.transaction, Transaction::Legacy { .. }) {
+      sig[64] = self.signature.v.odd_y_parity();
+    } else {
+      sig[64] = self.signature.v.0 as u8;
+    }
 
     #[cfg(not(test))] // use a syscall to fvm
     return recover_public_key(&self.transaction.hash().to_fixed_bytes(), &sig).map_err(
@@ -289,23 +400,30 @@ fn parse_legacy_transaction(bytes: &[u8]) -> Result<SignedTransaction, DecoderEr
 /// 0x01 || rlp([chainId, nonce, gasPrice, gasLimit, to, value, data,
 /// accessList, signatureYParity, signatureR, signatureS])
 fn parse_eip2930_transaction(bytes: &[u8]) -> Result<SignedTransaction, DecoderError> {
-  let _rlp = Rlp::new(&bytes[1..]);
+  let rlp = Rlp::new(&bytes[1..]);
+
+  if rlp.item_count()? != 11 {
+    return Err(DecoderError::RlpIncorrectListLen);
+  }
+
+  let signature = TransactionSignature {
+    v: TransactionRecoveryId(rlp.val_at(8)?),
+    r: rlp.val_at(9)?,
+    s: rlp.val_at(10)?,
+  };
+
   Ok(SignedTransaction {
-    signature: TransactionSignature {
-      v: TransactionRecoveryId(27),
-      r: H256::zero(),
-      s: H256::zero(),
-    },
     transaction: Transaction::EIP2930 {
-      chain_id: 1,
-      nonce: 1,
-      gas_price: U256::zero(),
-      gas_limit: 1,
-      action: TransactionAction::Call(H160::zero()),
-      value: U256::zero(),
-      input: Bytes::new(),
-      access_list: vec![],
+      chain_id: rlp.val_at(0)?,
+      nonce: rlp.val_at(1)?,
+      gas_price: rlp.val_at(2)?,
+      gas_limit: rlp.val_at(3)?,
+      action: rlp.val_at(4)?,
+      value: rlp.val_at(5)?,
+      input: rlp.val_at(6)?,
+      access_list: rlp.list_at(7)?,
     },
+    signature,
   })
 }
 
@@ -313,30 +431,44 @@ fn parse_eip2930_transaction(bytes: &[u8]) -> Result<SignedTransaction, DecoderE
 /// gas_limit, destination, amount, data, access_list, signature_y_parity,
 /// signature_r, signature_s])
 fn parse_eip1559_transaction(bytes: &[u8]) -> Result<SignedTransaction, DecoderError> {
-  let _rlp = Rlp::new(&bytes[1..]);
+  let rlp = Rlp::new(&bytes[1..]);
+
+  if rlp.item_count()? != 12 {
+    return Err(DecoderError::RlpIncorrectListLen);
+  }
+
   Ok(SignedTransaction {
     signature: TransactionSignature {
-      v: TransactionRecoveryId(28),
-      r: H256::zero(),
-      s: H256::zero(),
+      v: TransactionRecoveryId(rlp.val_at(9)?),
+      r: rlp.val_at(10)?,
+      s: rlp.val_at(11)?,
     },
     transaction: Transaction::EIP1559 {
-      chain_id: 1,
-      nonce: 1,
-      gas_limit: 1,
-      action: TransactionAction::Create,
-      value: U256::zero(),
-      input: Bytes::new(),
-      max_priority_fee_per_gas: U256::zero(),
-      max_fee_per_gas: U256::zero(),
-      access_list: vec![],
+      chain_id: rlp.val_at(0)?,
+      nonce: rlp.val_at(1)?,
+      max_priority_fee_per_gas: rlp.val_at(2)?,
+      max_fee_per_gas: rlp.val_at(3)?,
+      gas_limit: rlp.val_at(4)?,
+      action: rlp.val_at(5)?,
+      value: rlp.val_at(6)?,
+      input: rlp.val_at(7)?,
+      access_list: rlp.list_at(8)?,
     },
   })
 }
 
 #[cfg(test)]
 mod tests {
-  use {crate::SignedTransaction, hex_literal::hex};
+  use {
+    crate::{
+      transaction::{AccessListItem, Transaction, TransactionAction},
+      SignedTransaction,
+      H160,
+      H256,
+      U256,
+    },
+    hex_literal::hex,
+  };
 
   #[test]
   fn decode_legacy_transaction() {
@@ -356,36 +488,200 @@ mod tests {
     );
 
     let transaction = SignedTransaction::try_from(&raw[..]).unwrap();
-    let address = transaction.sender_address().unwrap();
-    let hash = transaction.transaction.hash();
-    println!("legacy transaction: {transaction:?}");
-    println!("sender address: {address:?}");
-    println!("tx hash: {hash:?}");
+
+    // test sender recovery
+    assert_eq!(
+      H160::from_slice(&hex!("12021043bbaab3b71b2217655787a13d24cf618b")),
+      transaction.sender_address().unwrap()
+    );
+
+    // test transaction hash computation:
+    assert_eq!(
+      H256::from_slice(&hex!(
+        "3741aea434dc6e9e740be0113af4bac372fcdd2fa2188409c93c9405cbdcaaf0"
+      )),
+      transaction.hash()
+    );
+
+    // test decoded fields
+    if let Transaction::Legacy {
+      chain_id,
+      nonce,
+      gas_price,
+      gas_limit,
+      action,
+      value,
+      input,
+    } = transaction.transaction
+    {
+      assert_eq!(Some(1), chain_id);
+      assert_eq!(8, nonce);
+      assert_eq!(U256::from(74000001459u64), gas_price);
+      assert_eq!(166236, gas_limit);
+      assert_eq!(U256::zero(), value);
+
+      assert_eq!(
+        TransactionAction::Call(H160::from_slice(&hex!(
+          "7a250d5630b4cf539739df2c5dacb4c659f2488d"
+        ))),
+        action
+      );
+
+      assert_eq!(
+        &hex!(
+          "4a25d94a00000000000000000000000000000000000000000000000022b1c8c1227a
+           0000000000000000000000000000000000000000000000000003f0a59430f92a9244
+           00000000000000000000000000000000000000000000000000000000000000a00000
+           0000000000000000000012021043bbaab3b71b2217655787a13d24cf618b00000000
+           000000000000000000000000000000000000000000000000603c6a1e000000000000
+           00000000000000000000000000000000000000000000000000020000000000000000
+           00000000fe9a29ab92522d14fc65880d817214261d8479ae00000000000000000000
+           0000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        ) as &[u8],
+        &input
+      );
+    } else {
+      assert!(false, "decoded into wrong transaction type");
+    }
   }
 
   #[test]
   fn decode_eip2930_transaction() {
-    let _raw = hex!(
-      "b8f501f8f205078506fc23ac008357b58494811a752c8cd697e3cb27279c330ed1ada745
-      a8d7881bc16d674ec80000906ebaf477f83e051589c1188bcc6ddccdf872f85994de0b295
-      669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000
-      000000000000000000000000000003a000000000000000000000000000000000000000000
-      00000000000000000000007d694bb9bc244d798123fde783fcc1c72d3bb8c189413c080a0
-      36b241b061a36a32ab7fe86c7aa9eb592dd59018cd0443adc0903590c16b02b0a05edcc54
-      1b4741c5cc6dd347c5ed9577ef293a62787b4510465fadbfe39ee4094"
+    // https://etherscan.io/tx/0xfbf20efe99271206c0f5b497a92bee2e66f8bf9991e07648935194f17610b36e
+    let raw = hex!(
+      "01f8bb01808522ecb25c008307a120942a48420d75777af4c99970c0ed3c25effd1c08b
+      e80843ccfd60bf84ff794fbfed54d426217bf75d2ce86622c1e5faf16b0a6e1a00000000
+      000000000000000000000000000000000000000000000000000000000d694d9db270c1b5
+      e3bd161e8c8503c55ceabee709552c080a03057d1077af1fc48bdfe2a8eac03caf686145
+      b52342e77ad6982566fe39e0691a00507044aa767a50dc926d0daa4dd616b1e5a8d2e578
+      1df5bc9feeee5a5139d61"
     );
-    todo!()
+
+    let transaction = SignedTransaction::try_from(&raw[..]).unwrap();
+
+    // test if the right transaction type was detected
+    assert!(matches!(
+      transaction.transaction,
+      Transaction::EIP2930 { .. }
+    ));
+
+    // test transaction hash computation:
+    assert_eq!(
+      H256::from_slice(&hex!(
+        "fbf20efe99271206c0f5b497a92bee2e66f8bf9991e07648935194f17610b36e"
+      )),
+      transaction.hash()
+    );
+
+    // test sender recovery
+    assert_eq!(
+      H160::from_slice(&hex!("4e2b6cc39e22026d8ce21214646a657ab7eb92b3")),
+      transaction.sender_address().unwrap()
+    );
+
+    if let Transaction::EIP2930 {
+      chain_id,
+      nonce,
+      gas_price,
+      gas_limit,
+      action,
+      value,
+      input,
+      access_list,
+    } = transaction.transaction
+    {
+      assert_eq!(1, chain_id);
+      assert_eq!(0, nonce);
+      assert_eq!(U256::from(150000000000u64), gas_price);
+      assert_eq!(500000, gas_limit);
+      assert_eq!(U256::zero(), value);
+      assert_eq!(
+        TransactionAction::Call(H160::from_slice(&hex!(
+          "2a48420d75777af4c99970c0ed3c25effd1c08be"
+        ))),
+        action
+      );
+      assert_eq!(&hex!("3ccfd60b") as &[u8], &input);
+      assert_eq!(
+        vec![
+          AccessListItem {
+            address: H160::from_slice(&hex!("fbfed54d426217bf75d2ce86622c1e5faf16b0a6")),
+            slots: vec![H256::from_slice(&hex!(
+              "0000000000000000000000000000000000000000000000000000000000000000"
+            ))]
+          },
+          AccessListItem {
+            address: H160::from_slice(&hex!("d9db270c1b5e3bd161e8c8503c55ceabee709552")),
+            slots: vec![]
+          }
+        ],
+        access_list
+      )
+    } else {
+      assert!(false, "decoded into wrong transaction type");
+    }
   }
 
   #[test]
   fn decode_eip1559_transaction() {
     // https://etherscan.io/tx/0x734678f719001015c5b5f5cbac6a9210ede7ee6ce63e746ff2e9eecda3ab68c7
-    let _raw = hex!(
+    let raw = hex!(
       "02f8720104843b9aca008504eb6480bc82520894f76c5b19e86c256
        482f4aad1dae620a0c3ac0cd68717699d954d540080c080a05a5206a8e0486b8e101bcf
        4ed5b290df24a4d54f1ca752c859fa19c291244b98a0177166d96fd69db70628d99855b
        400c8a149b2254c211a0a00645830f5338218"
     );
-    todo!()
+
+    let transaction = SignedTransaction::try_from(&raw[..]).unwrap();
+
+    // test if the right transaction type was detected
+    assert!(matches!(
+      transaction.transaction,
+      Transaction::EIP1559 { .. }
+    ));
+
+    // test transaction hash computation:
+    assert_eq!(
+      H256::from_slice(&hex!(
+        "734678f719001015c5b5f5cbac6a9210ede7ee6ce63e746ff2e9eecda3ab68c7"
+      )),
+      transaction.hash()
+    );
+
+    // test sender recovery
+    assert_eq!(
+      H160::from_slice(&hex!("d882fab949fe224befd0e85afcc5f13d67980102")),
+      transaction.sender_address().unwrap()
+    );
+
+    if let Transaction::EIP1559 {
+      chain_id,
+      nonce,
+      max_priority_fee_per_gas,
+      max_fee_per_gas,
+      gas_limit,
+      action,
+      value,
+      input,
+      access_list,
+    } = transaction.transaction
+    {
+      assert_eq!(1, chain_id);
+      assert_eq!(4, nonce);
+      assert_eq!(21000, gas_limit);
+      assert_eq!(U256::from(6590050000000000u64), value);
+      assert_eq!(U256::from(1000000000), max_priority_fee_per_gas);
+      assert_eq!(U256::from(21129101500u64), max_fee_per_gas);
+      assert_eq!(&[] as &[u8], &input);
+      assert_eq!(Vec::<AccessListItem>::new(), access_list);
+      assert_eq!(
+        TransactionAction::Call(H160::from_slice(&hex!(
+          "f76c5b19e86c256482f4aad1dae620a0c3ac0cd6"
+        ))),
+        action
+      );
+    } else {
+      assert!(false, "decoded into wrong transaction type");
+    }
   }
 }
