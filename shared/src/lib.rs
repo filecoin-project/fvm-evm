@@ -20,7 +20,13 @@ pub use {
   message::{CallKind, Message, StatusCode},
   output::Output,
   system::System,
-  transaction::SignedTransaction,
+  transaction::{
+    SignedTransaction,
+    Transaction,
+    TransactionAction,
+    TransactionRecoveryId,
+    TransactionSignature,
+  },
   uints::{H160, H256, U256, U512},
 };
 

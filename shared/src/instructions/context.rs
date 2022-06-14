@@ -21,10 +21,11 @@ pub fn caller<'r, BS: Blockstore>(
 
 #[inline]
 pub fn call_value<'r, BS: Blockstore>(
-  _state: &mut ExecutionState,
+  state: &mut ExecutionState,
   _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
-  todo!()
+  state.stack.push(state.message.value);
+  Ok(())
 }
 
 #[inline]

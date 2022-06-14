@@ -35,6 +35,7 @@ rlp = { version = "0.5.1", default-features = false }
 hex = "0.4.3"
 
 [dev-dependencies]
+libsecp256k1 = { version = "0.7.0", features = ["static-context"] }
 hex-literal = "0.3.4"
 fvm_shared = { path = "../../ref-fvm/shared", default-features = false, features = [
   "crypto",

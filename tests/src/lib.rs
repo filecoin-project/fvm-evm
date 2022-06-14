@@ -1,8 +1,16 @@
 use {
   fvm::executor::{ApplyKind, Executor},
+  fvm_evm::{
+    SignedTransaction,
+    Transaction,
+    TransactionRecoveryId,
+    TransactionSignature,
+    H256,
+  },
   fvm_integration_tests::tester::Account,
   fvm_ipld_encoding::{Cbor, RawBytes},
   fvm_shared::{message::Message, MethodNum, METHOD_CONSTRUCTOR},
+  libsecp256k1::{sign, Message as SecpMessage, SecretKey},
 };
 
 #[cfg(test)]
@@ -194,4 +202,31 @@ pub fn invoke_actor(
   sequence: u64,
 ) -> Result<RawBytes> {
   send_explicit_message(tester, caller, address, method, params, sequence)
+}
+
+pub fn sign_transaction(
+  transaction: Transaction,
+  seckey: SecretKey,
+) -> SignedTransaction {
+  let hash = transaction.hash();
+  let (signature, recovery_id) =
+    sign(&SecpMessage::parse(&hash.as_fixed_bytes()), &seckey);
+  let recovery_id = recovery_id.serialize() as u64;
+  let signature = TransactionSignature {
+    v: TransactionRecoveryId(match transaction {
+      Transaction::Legacy { .. } => match transaction.chain_id() {
+        Some(chain_id) => chain_id * 2 + 35 + recovery_id,
+        None => recovery_id,
+      },
+      Transaction::EIP2930 { .. } => recovery_id,
+      Transaction::EIP1559 { .. } => recovery_id,
+    }),
+    r: H256::from_slice(&signature.r.b32()),
+    s: H256::from_slice(&signature.s.b32()),
+  };
+
+  SignedTransaction {
+    transaction,
+    signature,
+  }
 }

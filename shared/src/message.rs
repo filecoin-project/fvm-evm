@@ -1,6 +1,7 @@
 use {
-  crate::{H160, U256},
+  crate::{transaction::TransactionAction, SignedTransaction, H160, U256},
   bytes::Bytes,
+  fil_actors_runtime::ActorError,
   fvm_ipld_encoding::Cbor,
   serde::{Deserialize, Serialize},
   strum_macros::Display,
@@ -174,3 +175,26 @@ pub enum StatusCode {
 }
 
 impl Cbor for StatusCode {}
+
+impl TryFrom<SignedTransaction> for Message {
+  type Error = ActorError;
+
+  fn try_from(tx: SignedTransaction) -> Result<Self, Self::Error> {
+    Ok(Message {
+      kind: match tx.transaction.action() {
+        TransactionAction::Call(_) => CallKind::Call,
+        TransactionAction::Create => CallKind::Create,
+      },
+      is_static: false,
+      depth: 0,
+      gas: tx.transaction.gas_limit() as i64,
+      recipient: match tx.transaction.action() {
+        TransactionAction::Call(addr) => addr,
+        TransactionAction::Create => H160::zero(),
+      },
+      sender: tx.sender_address()?,
+      input_data: tx.transaction.input(),
+      value: tx.transaction.value(),
+    })
+  }
+}

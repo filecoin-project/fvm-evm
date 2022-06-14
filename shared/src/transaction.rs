@@ -10,10 +10,66 @@ use {
   std::{fmt::Debug, ops::Deref},
 };
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum TransactionAction {
   Call(H160),
   Create,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct AccessListItem {
+  pub address: H160,
+  pub slots: Vec<H256>,
+}
+
+#[derive(Debug)]
+pub enum Transaction {
+  Legacy {
+    chain_id: Option<u64>,
+    nonce: u64,
+    gas_price: U256,
+    gas_limit: u64,
+    action: TransactionAction,
+    value: U256,
+    input: Bytes,
+  },
+  EIP2930 {
+    chain_id: u64,
+    nonce: u64,
+    gas_price: U256,
+    gas_limit: u64,
+    action: TransactionAction,
+    value: U256,
+    input: Bytes,
+    access_list: Vec<AccessListItem>,
+  },
+  EIP1559 {
+    chain_id: u64,
+    nonce: u64,
+    max_priority_fee_per_gas: U256,
+    max_fee_per_gas: U256,
+    gas_limit: u64,
+    action: TransactionAction,
+    value: U256,
+    input: Bytes,
+    access_list: Vec<AccessListItem>,
+  },
+}
+
+#[derive(Debug)]
+pub struct TransactionRecoveryId(pub u64);
+
+#[derive(Debug)]
+pub struct TransactionSignature {
+  pub v: TransactionRecoveryId,
+  pub r: H256,
+  pub s: H256,
+}
+
+#[derive(Debug)]
+pub struct SignedTransaction {
+  pub transaction: Transaction,
+  pub signature: TransactionSignature,
 }
 
 impl rlp::Encodable for TransactionAction {
@@ -41,12 +97,6 @@ impl rlp::Decodable for TransactionAction {
   }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct AccessListItem {
-  pub address: H160,
-  pub slots: Vec<H256>,
-}
-
 impl rlp::Encodable for AccessListItem {
   fn rlp_append(&self, s: &mut RlpStream) {
     s.begin_list(2);
@@ -64,47 +114,10 @@ impl rlp::Decodable for AccessListItem {
   }
 }
 
-#[derive(Debug)]
-pub enum Transaction {
-  /// rlp([nonce, gasPrice, gasLimit, to, value, data, init, vrs])
-  Legacy {
-    chain_id: Option<u64>,
-    nonce: u64,
-    gas_price: U256,
-    gas_limit: u64,
-    action: TransactionAction,
-    value: U256,
-    input: Bytes,
-  },
-  /// 0x01 || rlp([chainId, nonce, gasPrice, gasLimit, to, value, data,
-  /// accessList, signatureYParity, signatureR, signatureS])
-  EIP2930 {
-    chain_id: u64,
-    nonce: u64,
-    gas_price: U256,
-    gas_limit: u64,
-    action: TransactionAction,
-    value: U256,
-    input: Bytes,
-    access_list: Vec<AccessListItem>,
-  },
-  /// 0x02 || rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas,
-  /// gas_limit, destination, amount, data, access_list, signature_y_parity,
-  /// signature_r, signature_s])
-  EIP1559 {
-    chain_id: u64,
-    nonce: u64,
-    max_priority_fee_per_gas: U256,
-    max_fee_per_gas: U256,
-    gas_limit: u64,
-    action: TransactionAction,
-    value: U256,
-    input: Bytes,
-    access_list: Vec<AccessListItem>,
-  },
-}
-
 impl Transaction {
+  /// Calculates the hash of the transaction fields without the signature.
+  /// This value is the input to the signing function and the signature
+  /// is caluculated over this hash and the sender private key.
   pub fn hash(&self) -> H256 {
     let mut s = RlpStream::new();
     match self {
@@ -186,10 +199,57 @@ impl Transaction {
 
     H256::from_slice(Keccak256::digest(s.as_raw()).as_slice())
   }
-}
 
-#[derive(Debug)]
-pub struct TransactionRecoveryId(pub u64);
+  pub fn nonce(&self) -> u64 {
+    *match self {
+      Transaction::Legacy { nonce, .. } => nonce,
+      Transaction::EIP2930 { nonce, .. } => nonce,
+      Transaction::EIP1559 { nonce, .. } => nonce,
+    }
+  }
+
+  pub fn chain_id(&self) -> Option<u64> {
+    match self {
+      Transaction::Legacy { chain_id, .. } => *chain_id,
+      Transaction::EIP2930 { chain_id, .. } => Some(*chain_id),
+      Transaction::EIP1559 { chain_id, .. } => Some(*chain_id),
+    }
+  }
+
+  pub fn gas_limit(&self) -> u64 {
+    *match self {
+      Transaction::Legacy { gas_limit, .. } => gas_limit,
+      Transaction::EIP2930 { gas_limit, .. } => gas_limit,
+      Transaction::EIP1559 { gas_limit, .. } => gas_limit,
+    }
+  }
+
+  pub fn action(&self) -> TransactionAction {
+    match self {
+      Transaction::Legacy { action, .. } => action,
+      Transaction::EIP2930 { action, .. } => action,
+      Transaction::EIP1559 { action, .. } => action,
+    }
+    .clone()
+  }
+
+  pub fn input(&self) -> Bytes {
+    match self {
+      Transaction::Legacy { input, .. } => input,
+      Transaction::EIP2930 { input, .. } => input,
+      Transaction::EIP1559 { input, .. } => input,
+    }
+    .clone()
+  }
+
+  pub fn value(&self) -> U256 {
+    *match self {
+      Transaction::Legacy { value, .. } => value,
+      Transaction::EIP2930 { value, .. } => value,
+      Transaction::EIP1559 { value, .. } => value,
+    }
+  }
+}
 
 impl Deref for TransactionRecoveryId {
   type Target = u64;
@@ -217,19 +277,6 @@ impl TransactionRecoveryId {
   }
 }
 
-#[derive(Debug)]
-pub struct TransactionSignature {
-  v: TransactionRecoveryId,
-  r: H256,
-  s: H256,
-}
-
-#[derive(Debug)]
-pub struct SignedTransaction {
-  transaction: Transaction,
-  signature: TransactionSignature,
-}
-
 impl TryFrom<&[u8]> for SignedTransaction {
   type Error = DecoderError;
 
@@ -247,8 +294,14 @@ impl TryFrom<&[u8]> for SignedTransaction {
 }
 
 impl SignedTransaction {
-  pub fn hash(&self) -> H256 {
-    let bytes: Vec<_> = match &self.transaction {
+  /// Creates RLP serialized representation of the transaction.
+  /// This value is the input to the hash function that is used
+  /// to calculate the final transaction hash as it appears on
+  /// blockchain explorers. This representation can be sent directly
+  /// to ETH nodes and to the FVM-EVM bridge
+  pub fn serialize(&self) -> Vec<u8> {
+    let mut s = RlpStream::new();
+    match &self.transaction {
       Transaction::Legacy {
         nonce,
         gas_price,
@@ -258,7 +311,6 @@ impl SignedTransaction {
         input,
         ..
       } => {
-        let mut s = RlpStream::new();
         s.begin_list(9);
         s.append(nonce);
         s.append(gas_price);
@@ -269,7 +321,6 @@ impl SignedTransaction {
         s.append(&self.signature.v.0);
         s.append(&self.signature.r);
         s.append(&self.signature.s);
-        s.as_raw().to_vec()
       }
       Transaction::EIP2930 {
         chain_id,
@@ -281,7 +332,6 @@ impl SignedTransaction {
         input,
         access_list,
       } => {
-        let mut s = RlpStream::new();
         s.append_raw(&[1u8], 0);
         s.begin_list(11);
         s.append(chain_id);
@@ -295,7 +345,6 @@ impl SignedTransaction {
         s.append(&self.signature.v.0);
         s.append(&self.signature.r);
         s.append(&self.signature.s);
-        s.as_raw().to_vec()
       }
       Transaction::EIP1559 {
         chain_id,
@@ -308,7 +357,6 @@ impl SignedTransaction {
         input,
         access_list,
       } => {
-        let mut s = RlpStream::new();
         s.append_raw(&[2u8], 0);
         s.begin_list(12);
         s.append(chain_id);
@@ -323,11 +371,13 @@ impl SignedTransaction {
         s.append(&self.signature.v.0);
         s.append(&self.signature.r);
         s.append(&self.signature.s);
-        s.as_raw().to_vec()
       }
     };
+    s.as_raw().to_vec()
+  }
 
-    H256::from_slice(Keccak256::digest(bytes).as_slice())
+  pub fn hash(&self) -> H256 {
+    H256::from_slice(Keccak256::digest(&self.serialize()).as_slice())
   }
 
   /// The secp256k1 public key of the transaction sender.
