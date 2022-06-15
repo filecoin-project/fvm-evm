@@ -2,7 +2,8 @@ use {
   super::memory::{get_memory_region, num_words},
   crate::{
     execution::ExecutionState,
-    message::{CallKind, StatusCode},
+    message::CallKind,
+    output::StatusCode,
     stack::Stack,
     system::System,
     U256,

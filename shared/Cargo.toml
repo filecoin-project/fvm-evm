@@ -19,7 +19,7 @@ uint = { version = "0.9.3", default-features = false }
 impl-serde = { version = "0.3.2", default-features = false }
 fixed-hash = { version = "0.7.0", default-features = false }
 arrayvec = { version = "0.7.2", features = ["serde"] }
-bytes = { version = "1.1.0", default-features = false }
+bytes = { version = "1.1.0", features = ["serde"], default-features = false }
 derive_more = "0.99"
 strum = "0.24"
 strum_macros = "0.24"
@@ -32,7 +32,6 @@ fil_actors_runtime = { git = "https://github.com/filecoin-project/builtin-actors
   "fil-actor",
 ] }
 rlp = { version = "0.5.1", default-features = false }
-hex = "0.4.3"
 
 [dev-dependencies]
 libsecp256k1 = { version = "0.7.0", features = ["static-context"] }

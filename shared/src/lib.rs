@@ -17,8 +17,8 @@ pub use {
   account::{AccountKind, EthereumAccount},
   bytecode::Bytecode,
   execution::{execute, ExecutionState},
-  message::{CallKind, Message, StatusCode},
-  output::Output,
+  message::{CallKind, Message},
+  output::{Output, StatusCode},
   system::System,
   transaction::{
     SignedTransaction,
@@ -29,6 +29,16 @@ pub use {
   },
   uints::{H160, H256, U256, U512},
 };
+
+/// This type is used to construct a new instance of an EVM contract.
+/// Instances of this type are created by the bridge actor after a successful
+/// invocation of EVM contract constructor.
+#[derive(serde_tuple::Serialize_tuple, serde_tuple::Deserialize_tuple)]
+pub struct EvmContractRuntimeConstructor {
+  pub initial_state: cid::Cid,
+  pub bytecode: bytes::Bytes,
+  pub registry: fvm_shared::address::Address,
+}
 
 #[macro_export]
 macro_rules! abort {

@@ -1,31 +1,26 @@
 use {
+  create::create_contract,
   fil_actors_runtime::{
     actor_error,
     runtime::{ActorCode, Runtime},
     ActorError,
     INIT_ACTOR_ADDR,
   },
-  fvm_evm::{
-    abort,
-    execute,
-    Bytecode,
-    EthereumAccount,
-    ExecutionState,
-    Message,
-    Output,
-    StatusCode,
-    System,
-    H160,
-    U256,
-  },
+  fvm_evm::{abort, TransactionAction},
   fvm_ipld_blockstore::Blockstore,
   fvm_ipld_encoding::{from_slice, RawBytes},
-  fvm_ipld_hamt::Hamt,
   fvm_sdk::{debug, sself},
-  fvm_shared::{address::Address, MethodNum, METHOD_CONSTRUCTOR},
+  fvm_shared::{MethodNum, METHOD_CONSTRUCTOR},
+  invoke::invoke_contract,
   num_derive::FromPrimitive,
   num_traits::FromPrimitive,
+  transfer::transfer_tokens,
 };
+
+mod create;
+mod invoke;
+mod state;
+mod transfer;
 
 #[cfg(feature = "fil-actor")]
 fil_actors_runtime::wasm_trampoline!(RegistryActor);
@@ -34,9 +29,7 @@ fil_actors_runtime::wasm_trampoline!(RegistryActor);
 #[repr(u64)]
 pub enum Method {
   Constructor = METHOD_CONSTRUCTOR,
-  RetreiveAccount = 2,
-  UpsertAccount = 3,
-  ProcessTransaction = 4,
+  ProcessTransaction = 2,
 }
 
 pub struct RegistryActor;
@@ -48,76 +41,25 @@ impl RegistryActor {
   {
     rt.validate_immediate_caller_is(std::iter::once(&*INIT_ACTOR_ADDR))?;
 
-    let empty_map_cid = Hamt::<_, EthereumAccount, H160>::new(rt.store())
-      .flush()
-      .map_err(|e| {
-        ActorError::illegal_state(format!("Failed to create empty map: {e}"))
-      })?;
+    // Initialize the global state of the bridge to an empty map.
+    // todo: in later iterations initialize with precompiles.
+    let initial_state_cid = state::initialize_bridge_state(rt)?;
 
-    if let Err(err) = sself::set_root(&empty_map_cid) {
-      abort!(USR_ILLEGAL_STATE, "failed to initialize state root: {err}");
+    if let Err(err) = sself::set_root(&initial_state_cid) {
+      abort!(
+        USR_ILLEGAL_STATE,
+        "failed to initialize bridge state: {err}"
+      );
     }
 
     Ok(())
   }
 
-  pub fn upsert<BS, RT>(
-    rt: &mut RT,
-    address: H160,
-    account: EthereumAccount,
-  ) -> Result<(), ActorError>
-  where
-    BS: Blockstore,
-    RT: Runtime<BS>,
-  {
-    rt.validate_immediate_caller_accept_any()?;
-
-    let mut dict = load_global_map(rt)?;
-
-    dict
-      .set(address, account)
-      .map_err(|e| ActorError::illegal_argument(e.to_string()))?;
-
-    let new_root = dict
-      .flush()
-      .map_err(|e| ActorError::illegal_state(e.to_string()))?;
-
-    sself::set_root(&new_root).map_err(|e| ActorError::illegal_state(e.to_string()))?;
-
-    Ok(())
-  }
-
-  pub fn retreive<BS, RT>(
-    rt: &mut RT,
-    address: H160,
-  ) -> Result<EthereumAccount, ActorError>
-  where
-    BS: Blockstore,
-    RT: Runtime<BS>,
-  {
-    rt.validate_immediate_caller_accept_any()?;
-
-    let dict = load_global_map(rt)?;
-
-    let account = dict
-      .get(&address)
-      .map_err(|e| ActorError::illegal_argument(e.to_string()))?;
-
-    Ok(match account {
-      // account exists, returns its contents.
-      Some(acc) => *acc,
-
-      // account does not exist, ethereum then synthesizes an empty
-      // account with zero balance, zero nonce, and everything else
-      // zeroed out.
-      None => EthereumAccount::default(),
-    })
-  }
-
+  /// This is the entry point to interacting with the bridge from RPC nodes
   pub fn process_transaction<BS, RT>(
     rt: &mut RT,
     rlp: &[u8],
-  ) -> Result<Output, ActorError>
+  ) -> Result<RawBytes, ActorError>
   where
     BS: Blockstore,
     RT: Runtime<BS>,
@@ -126,36 +68,19 @@ impl RegistryActor {
 
     let transaction = fvm_evm::SignedTransaction::try_from(rlp)
       .map_err(|e| ActorError::illegal_argument(format!("{e:?}")))?;
+    debug::log(format!("FVM transaction: {transaction:#?}"));
 
-    let message: Message = transaction
-      .try_into()
-      .map_err(|e| ActorError::illegal_argument(format!("{e:?}")))?;
-
-    debug::log(format!("FVM message: {message:#?}"));
-
-    let mut exec_state = ExecutionState::new(&message);
-    let bytecode = Bytecode::new(&message.input_data)
-      .map_err(|e| ActorError::illegal_argument(format!("{e:?}")))?;
-
-    let bridge_addr = Address::new_id(fvm_sdk::message::receiver());
-    let state_cid = Hamt::<_, U256, U256>::new(rt.store())
-      .flush()
-      .map_err(|e| ActorError::illegal_argument(format!("{e:?}")))?;
-
-    debug::log(format!("bridge address: {bridge_addr:?}"));
-    let mut system = System::new(state_cid, rt, bridge_addr, H160::zero())
-      .map_err(|e| ActorError::illegal_argument(format!("{e:?}")))?;
-
-    let exec_status = execute(&bytecode, &mut exec_state, &mut system)
-      .map_err(|e| ActorError::illegal_argument(format!("{e:?}")))?;
-
-    debug::log(format!("evm exec status: {exec_status:?}"));
-
-    Ok(Output {
-      logs: vec![message.sender.to_string()],
-      gas_left: 0,
-      status_code: StatusCode::Success,
-    })
+    match transaction.action() {
+      TransactionAction::Call(_) => invoke_contract(rt, transaction),
+      TransactionAction::Create => {
+        if transaction.input().is_empty() {
+          transfer_tokens(rt, transaction) // transaction is burning tokens
+        } else {
+          // transaction is creating new contract
+          create_contract(rt, transaction)
+        }
+      }
+    }
   }
 }
 
@@ -174,36 +99,11 @@ impl ActorCode for RegistryActor {
         Self::constructor(rt)?;
         Ok(RawBytes::default())
       }
-      Some(Method::RetreiveAccount) => {
-        let address = from_slice(&params)?;
-        let account = Self::retreive(rt, address)?;
-        Ok(RawBytes::serialize(account)?)
-      }
-      Some(Method::UpsertAccount) => {
-        let (address, account) = from_slice(&params)?;
-        Self::upsert(rt, address, account)?;
-        Ok(RawBytes::default())
-      }
       Some(Method::ProcessTransaction) => {
         let rlp: Vec<u8> = from_slice(&params)?;
-        let output = Self::process_transaction(rt, &rlp)?;
-        Ok(RawBytes::serialize(output)?)
+        Self::process_transaction(rt, &rlp)
       }
       None => Err(actor_error!(unhandled_message; "Invalid method")),
     }
   }
-}
-
-fn load_global_map<BS, RT>(
-  rt: &mut RT,
-) -> Result<Hamt<&BS, EthereumAccount, H160>, ActorError>
-where
-  BS: Blockstore,
-  RT: Runtime<BS>,
-{
-  Hamt::<_, EthereumAccount, H160>::load(
-    &sself::root().map_err(|e| ActorError::not_found(e.to_string()))?,
-    rt.store(),
-  )
-  .map_err(|e| ActorError::illegal_state(e.to_string()))
 }

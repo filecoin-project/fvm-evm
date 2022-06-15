@@ -3,7 +3,7 @@ use {
   crate::{
     bytecode::Bytecode,
     execution::ExecutionState,
-    message::StatusCode,
+    output::StatusCode,
     stack::Stack,
     U256,
   },

@@ -216,6 +216,16 @@ impl Transaction {
     }
   }
 
+  pub fn gas_price(&self) -> U256 {
+    *match self {
+      Transaction::Legacy { gas_price, .. } => gas_price,
+      Transaction::EIP2930 { gas_price, .. } => gas_price,
+      Transaction::EIP1559 {
+        max_fee_per_gas, ..
+      } => max_fee_per_gas,
+    }
+  }
+
   pub fn gas_limit(&self) -> u64 {
     *match self {
       Transaction::Legacy { gas_limit, .. } => gas_limit,
@@ -290,6 +300,14 @@ impl TryFrom<&[u8]> for SignedTransaction {
       0x02 => parse_eip1559_transaction(value),
       _ => parse_legacy_transaction(value),
     }
+  }
+}
+
+impl Deref for SignedTransaction {
+  type Target = Transaction;
+
+  fn deref(&self) -> &Self::Target {
+    &self.transaction
   }
 }
 

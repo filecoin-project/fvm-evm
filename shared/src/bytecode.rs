@@ -1,5 +1,5 @@
 use {
-  crate::{message::StatusCode, opcode::OpCode},
+  crate::{output::StatusCode, opcode::OpCode},
   std::ops::Deref,
 };
 

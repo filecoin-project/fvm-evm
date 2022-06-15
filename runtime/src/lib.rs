@@ -1,16 +1,14 @@
 use {
   crate::state::ContractState,
-  bytes::Bytes,
   fil_actors_runtime::{
     actor_error,
     runtime::{ActorCode, Runtime},
     ActorError,
     INIT_ACTOR_ADDR,
   },
-  fvm_evm::{execute, Bytecode, ExecutionState, Message, System, H160, U256},
+  fvm_evm::H160,
   fvm_ipld_blockstore::Blockstore,
   fvm_ipld_encoding::{from_slice, RawBytes},
-  fvm_sdk::{debug::log, ipld},
   fvm_shared::{address::Address, MethodNum, METHOD_CONSTRUCTOR},
   num_derive::FromPrimitive,
   num_traits::FromPrimitive,
@@ -58,39 +56,42 @@ impl EvmRuntimeActor {
     RT: Runtime<BS>,
   {
     rt.validate_immediate_caller_accept_any()?;
-    let state: ContractState = rt.state()?;
-    let message = Message {
-      kind: fvm_evm::CallKind::Call,
-      is_static: false,
-      depth: 1,
-      gas: 2100,
-      recipient: H160::zero(),
-      sender: H160::zero(),
-      input_data: Bytes::new(),
-      value: U256::zero(),
-    };
+    // let state: ContractState = rt.state()?;
+    // let message = Message {
+    //   kind: fvm_evm::CallKind::Call,
+    //   is_static: false,
+    //   depth: 1,
+    //   gas: 2100,
+    //   recipient: H160::zero(),
+    //   sender: H160::zero(),
+    //   input_data: Bytes::new(),
+    //   value: U256::zero(),
+    // };
 
-    let bytecode: Vec<_> = from_slice(&ipld::get(&state.bytecode).map_err(|e| {
-      ActorError::illegal_state(format!("failed to load bytecode: {e:?}"))
-    })?)
-    .map_err(|e| ActorError::unspecified(format!("failed to load bytecode: {e:?}")))?;
+    // let bytecode: Vec<_> = from_slice(&ipld::get(&state.bytecode).map_err(|e| {
+    //   ActorError::illegal_state(format!("failed to load bytecode: {e:?}"))
+    // })?)
+    // .map_err(|e| ActorError::unspecified(format!("failed to load bytecode:
+    // {e:?}")))?;
 
-    // EVM contract bytecode
-    let bytecode = Bytecode::new(&bytecode)
-      .map_err(|e| ActorError::unspecified(format!("invalid bytecode: {e:?}")))?;
+    // // EVM contract bytecode
+    // let bytecode = Bytecode::new(&bytecode)
+    //   .map_err(|e| ActorError::unspecified(format!("invalid bytecode: {e:?}")))?;
 
-    // the execution state of the EVM, stack, heap, etc.
-    let mut runtime = ExecutionState::new(&message);
+    // // the execution state of the EVM, stack, heap, etc.
+    // let mut runtime = ExecutionState::new(&message);
 
-    // the interface between the EVM interpretter and the FVM system
-    let mut system = System::new(state.state, rt, state.bridge, state.self_address)
-      .map_err(|e| ActorError::unspecified(format!("failed to create runtime: {e:?}")))?;
+    // // the interface between the EVM interpretter and the FVM system
+    // let mut system = System::new(state.state, rt, state.bridge,
+    // state.self_address)   .map_err(|e|
+    // ActorError::unspecified(format!("failed to create runtime: {e:?}")))?;
 
-    // invoke the bytecode using the current state and the platform interface
-    let output = execute(&bytecode, &mut runtime, &mut system)
-      .map_err(|e| ActorError::unspecified(format!("contract execution error: {e:?}")))?;
+    // // invoke the bytecode using the current state and the platform interface
+    // let output = execute(&bytecode, &mut runtime, &mut system)
+    //   .map_err(|e| ActorError::unspecified(format!("contract execution error:
+    // {e:?}")))?;
 
-    log(format!("evm output: {output:?}"));
+    // log(format!("evm output: {output:?}"));
     Ok(RawBytes::default())
   }
 

@@ -1,5 +1,5 @@
 use {
-  crate::{execution::ExecutionState, message::StatusCode, system::System},
+  crate::{execution::ExecutionState, output::StatusCode, system::System},
   fvm_ipld_blockstore::Blockstore,
 };
 

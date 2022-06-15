@@ -1,6 +1,6 @@
 use {
   super::memory::{get_memory_region, num_words},
-  crate::{execution::ExecutionState, message::StatusCode, U256},
+  crate::{execution::ExecutionState, output::StatusCode, U256},
   sha3::{Digest, Keccak256},
 };
 

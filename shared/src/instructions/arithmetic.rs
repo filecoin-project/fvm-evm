@@ -1,6 +1,6 @@
 use crate::{
   execution::ExecutionState,
-  message::StatusCode,
+  output::StatusCode,
   stack::Stack,
   uints::{i256_div, i256_mod, log2floor, u256_high, u256_low},
   U256,

@@ -4,7 +4,7 @@
 //! than the release date of the FVM-EVM runtime, so supporting
 //! historic behavior is not needed.
 
-use crate::message::StatusCode;
+use crate::output::StatusCode;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct OpCode {

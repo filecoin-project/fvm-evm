@@ -12,6 +12,7 @@ use {
 };
 
 #[test]
+#[ignore]
 fn cross_contract_smoke() -> Result<()> {
   const RETREIVE_METHOD_NUM: u64 = 2;
   const CONSTRUCT_ZERO_ACCOUNT_NUM: u64 = 2;

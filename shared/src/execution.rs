@@ -15,10 +15,12 @@ use {
       storage,
     },
     memory::Memory,
-    message::{CallKind, Message, Output, StatusCode},
+    message::{CallKind, Message},
     opcode::OpCode,
+    output::StatusCode,
     stack::Stack,
     system::System,
+    Output,
   },
   bytes::Bytes,
   fvm_ipld_blockstore::Blockstore,
@@ -51,7 +53,7 @@ impl<'m> ExecutionState<'m> {
 pub fn execute<'r, BS: Blockstore>(
   bytecode: &Bytecode,
   runtime: &mut ExecutionState,
-  system: &'r mut System<'r, BS>,
+  system: &'r System<'r, BS>,
 ) -> Result<Output, StatusCode> {
   let mut pc = 0; // program counter
   let mut reverted = false;
@@ -93,7 +95,7 @@ pub fn execute<'r, BS: Blockstore>(
       OpCode::ADDRESS => context::address(runtime, system)?,
       OpCode::BALANCE => storage::balance(runtime, system)?,
       OpCode::CALLER => context::caller(runtime, system)?,
-      OpCode::CALLVALUE => context::call_value(runtime, system)?,
+      OpCode::CALLVALUE => context::call_value(runtime, system),
       OpCode::CALLDATALOAD => call::calldataload(runtime),
       OpCode::CALLDATASIZE => call::calldatasize(runtime),
       OpCode::CALLDATACOPY => call::calldatacopy(runtime)?,
@@ -105,7 +107,7 @@ pub fn execute<'r, BS: Blockstore>(
       OpCode::RETURNDATACOPY => control::returndatacopy(runtime)?,
       OpCode::EXTCODEHASH => storage::extcodehash(runtime, system)?,
       OpCode::BLOCKHASH => context::blockhash(runtime, system)?,
-      OpCode::ORIGIN => context::origin(runtime, system)?,
+      OpCode::ORIGIN => context::origin(runtime, system),
       OpCode::COINBASE => context::coinbase(runtime, system)?,
       OpCode::GASPRICE => context::gas_price(runtime, system)?,
       OpCode::TIMESTAMP => context::timestamp(runtime, system)?,
@@ -229,6 +231,5 @@ pub fn execute<'r, BS: Blockstore>(
     status_code: StatusCode::Success,
     gas_left: runtime.gas_left,
     output_data: runtime.output_data.clone(),
-    create_address: None,
   })
 }

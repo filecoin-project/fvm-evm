@@ -107,6 +107,19 @@ pub fn u128_words_to_u256(high: u128, low: u128) -> U256 {
   U256::from_big_endian(&bytes)
 }
 
+
+#[inline]
+fn _u256_to_address(v: U256) -> H160 {
+  let mut bytes = [0u8; 32];
+  v.to_big_endian(&mut bytes);
+  H160::from_slice(&bytes)
+}
+
+#[inline]
+pub fn address_to_u256(v: H160) -> U256 {
+  U256::from_big_endian(v.as_bytes())
+}
+
 const SIGN_BITMASK_U128: u128 = 0x8000_0000_0000_0000_0000_0000_0000_0000;
 const FLIPH_BITMASK_U128: u128 = 0x7FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF;
 

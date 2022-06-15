@@ -1,5 +1,10 @@
 use {
-  crate::{execution::ExecutionState, message::StatusCode, system::System},
+  crate::{
+    execution::ExecutionState,
+    output::StatusCode,
+    system::System,
+    uints::address_to_u256,
+  },
   fvm_ipld_blockstore::Blockstore,
 };
 
@@ -23,9 +28,8 @@ pub fn caller<'r, BS: Blockstore>(
 pub fn call_value<'r, BS: Blockstore>(
   state: &mut ExecutionState,
   _platform: &'r System<'r, BS>,
-) -> Result<(), StatusCode> {
+) {
   state.stack.push(state.message.value);
-  Ok(())
 }
 
 #[inline]
@@ -38,10 +42,12 @@ pub fn address<'r, BS: Blockstore>(
 
 #[inline]
 pub fn origin<'r, BS: Blockstore>(
-  _state: &mut ExecutionState,
-  _platform: &'r System<'r, BS>,
-) -> Result<(), StatusCode> {
-  todo!()
+  state: &mut ExecutionState,
+  platform: &'r System<'r, BS>,
+) {
+  state
+    .stack
+    .push(address_to_u256(platform.transaction_context().tx_origin))
 }
 
 #[inline]

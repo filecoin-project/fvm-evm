@@ -1,18 +1,22 @@
 use {
-  crate::{execution::ExecutionState, message::StatusCode, system::System, H160, U256},
+  crate::{
+    execution::ExecutionState,
+    output::StatusCode,
+    system::{AccessStatus, StorageStatus, System},
+  },
   fvm_ipld_blockstore::Blockstore,
 };
 
-#[inline]
-fn _u256_to_address(v: U256) -> H160 {
-  let mut bytes = [0u8; 32];
-  v.to_big_endian(&mut bytes);
-  H160::from_slice(&bytes)
-}
+pub(crate) const COLD_SLOAD_COST: u16 = 2100;
+pub(crate) const _COLD_ACCOUNT_ACCESS_COST: u16 = 2600;
+pub(crate) const WARM_STORAGE_READ_COST: u16 = 100;
 
-#[inline]
-fn _address_to_u256(v: H160) -> U256 {
-  U256::from_big_endian(v.as_bytes())
+#[inline(always)]
+fn ok_or_out_of_gas(gas_left: i64) -> Result<(), StatusCode> {
+  match gas_left >= 0 {
+    true => Ok(()),
+    false => Err(StatusCode::OutOfGas),
+  }
 }
 
 #[inline]
@@ -25,10 +29,35 @@ pub fn sload<'r, BS: Blockstore>(
 
 #[inline]
 pub fn sstore<'r, BS: Blockstore>(
-  _state: &mut ExecutionState,
-  _platform: &'r System<'r, BS>,
+  state: &mut ExecutionState,
+  platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
-  todo!();
+  if state.message.is_static {
+    return Err(StatusCode::StaticModeViolation);
+  }
+
+  if state.gas_left <= 2300 {
+    return Err(StatusCode::OutOfGas);
+  }
+
+  let location = state.stack.pop();
+  let value = state.stack.pop();
+
+  let mut cost = 0;
+  if platform.access_storage(state.message.recipient, location) == AccessStatus::Cold {
+    cost = COLD_SLOAD_COST;
+  }
+
+  cost = match platform.set_storage(state.message.recipient, location, value)? {
+    StorageStatus::Unchanged | StorageStatus::ModifiedAgain => {
+      cost + WARM_STORAGE_READ_COST
+    }
+    StorageStatus::Modified | StorageStatus::Deleted => cost + 5000 - COLD_SLOAD_COST,
+    StorageStatus::Added => cost + 20000,
+  };
+
+  state.gas_left -= i64::from(cost);
+  ok_or_out_of_gas(state.gas_left)
 }
 
 #[inline]
@@ -45,14 +74,6 @@ pub fn selfbalance<'r, BS: Blockstore>(
   _platform: &'r System<'r, BS>,
 ) -> Result<(), StatusCode> {
   todo!()
-}
-
-#[inline(always)]
-fn _ok_or_out_of_gas(gas_left: i64) -> Result<(), StatusCode> {
-  match gas_left >= 0 {
-    true => Ok(()),
-    false => Err(StatusCode::OutOfGas),
-  }
 }
 
 #[inline]
