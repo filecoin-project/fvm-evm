@@ -44,6 +44,7 @@ impl EvmRuntimeActor {
     BS: Blockstore,
     RT: Runtime<BS>,
   {
+    fvm_sdk::debug::log(format!("Inside FVM Runtime actor constructor!"));
     rt.validate_immediate_caller_is(std::iter::once(&*INIT_ACTOR_ADDR))?;
     ContractState::new(bytecode, registry, rt.store(), H160::zero())
       .map_err(|e| ActorError::illegal_state(e.to_string()))?;

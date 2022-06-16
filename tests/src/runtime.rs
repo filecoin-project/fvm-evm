@@ -1,11 +1,5 @@
 use {
-  crate::{
-    construct_actor,
-    create_tester,
-    invoke_actor,
-    BRIDGE_ACTOR_ADDRESS,
-    RUNTIME_ACTOR_ADDRESS,
-  },
+  crate::EVMTester,
   anyhow::Result,
   fvm_evm::{EthereumAccount, H160, U256},
   fvm_ipld_encoding::{from_slice, to_vec, RawBytes},
@@ -17,23 +11,19 @@ fn cross_contract_smoke() -> Result<()> {
   const RETREIVE_METHOD_NUM: u64 = 2;
   const CONSTRUCT_ZERO_ACCOUNT_NUM: u64 = 2;
 
-  let (mut tester, accounts) = create_tester::<1>()?;
+  let mut tester = EVMTester::new::<1>()?;
 
   // construct registry
-  let output = construct_actor(
-    &mut tester, //
-    BRIDGE_ACTOR_ADDRESS,
-    RawBytes::default(),
-  )?;
+  let output =
+    tester.construct_actor(EVMTester::BRIDGE_ACTOR_ADDRESS, RawBytes::default())?;
 
   // registry constructor does not return anything
   assert_eq!(RawBytes::default(), output);
 
-  let runtime_params = (vec![1u8; 2], BRIDGE_ACTOR_ADDRESS);
+  let runtime_params = (vec![1u8; 2], EVMTester::BRIDGE_ACTOR_ADDRESS);
 
-  let output = construct_actor(
-    &mut tester, //
-    RUNTIME_ACTOR_ADDRESS,
+  let output = tester.construct_actor(
+    EVMTester::RUNTIME_ACTOR_ADDRESS,
     RawBytes::new(to_vec(&runtime_params)?),
   )?;
 
@@ -42,13 +32,11 @@ fn cross_contract_smoke() -> Result<()> {
 
   // make sure that the zero address is empty
   // before invoking the cross-contract call
-  let eth_account = from_slice(&invoke_actor(
-    &mut tester,
-    accounts[0].1,
-    BRIDGE_ACTOR_ADDRESS,
+  let eth_account = from_slice(&tester.invoke_actor(
+    tester.accounts()[0].1,
+    EVMTester::BRIDGE_ACTOR_ADDRESS,
     RETREIVE_METHOD_NUM,
     RawBytes::serialize(H160::zero())?,
-    0,
   )?)?;
 
   // not present, should return a synthesized empty/unused account
@@ -57,24 +45,20 @@ fn cross_contract_smoke() -> Result<()> {
   // invoke a runtime method that invokes
   // the registry and creates a new entry
   // for the zero address.
-  let output = invoke_actor(
-    &mut tester,
-    accounts[0].1,
-    RUNTIME_ACTOR_ADDRESS,
+  let output = tester.invoke_actor(
+    tester.accounts()[0].1,
+    EVMTester::RUNTIME_ACTOR_ADDRESS,
     CONSTRUCT_ZERO_ACCOUNT_NUM,
     RawBytes::default(),
-    1,
   )?;
   assert_eq!(RawBytes::default(), output);
 
   // now query again, it should have the inserted value
-  let eth_account = from_slice(&invoke_actor(
-    &mut tester,
-    accounts[0].1,
-    BRIDGE_ACTOR_ADDRESS,
+  let eth_account = from_slice(&tester.invoke_actor(
+    tester.accounts()[0].1,
+    EVMTester::BRIDGE_ACTOR_ADDRESS,
     RETREIVE_METHOD_NUM,
     RawBytes::serialize(H160::zero())?,
-    2,
   )?)?;
 
   assert_ne!(EthereumAccount::default(), eth_account);

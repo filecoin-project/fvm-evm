@@ -131,6 +131,9 @@ impl<'r, BS: Blockstore> System<'r, BS> {
     key: U256,
     value: U256,
   ) -> Result<StorageStatus, StatusCode> {
+    fvm_sdk::debug::log(format!(
+      "setting storage for {address:?} @ {key} to {value}"
+    ));
     if address == self.self_address {
       let mut storage_status = StorageStatus::Added;
       let prev_value = self

@@ -1,4 +1,5 @@
 use {
+  cid::Cid,
   fvm::executor::{ApplyKind, Executor},
   fvm_evm::{
     SignedTransaction,
@@ -11,6 +12,7 @@ use {
   fvm_ipld_encoding::{Cbor, RawBytes},
   fvm_shared::{message::Message, MethodNum, METHOD_CONSTRUCTOR},
   libsecp256k1::{sign, Message as SecpMessage, SecretKey},
+  std::collections::{hash_map::Entry, HashMap},
 };
 
 #[cfg(test)]
@@ -30,181 +32,172 @@ use {
     version::NetworkVersion,
   },
   serde::{Deserialize, Serialize},
-  std::{fs, sync::Arc},
+  std::fs,
 };
 
-pub const INIT_ACTOR_ADDRESS: Address = Address::new_id(1);
+struct EVMTester {
+  bridge_code_cid: Cid,
+  runtime_code_cid: Cid,
+  instance: Tester<MemoryBlockstore>,
+  accounts: Vec<Account>,
+  sequences: HashMap<Address, u64>,
+}
 
-const RUNTIME_ACTOR_ADDRESS: Address = Address::new_id(10001);
-const RUNTIME_ACTOR_WASM_PATH: &str = "../wasm/fvm_evm_runtime.compact.wasm";
+// constants
+impl EVMTester {
+  const BRIDGE_ACTOR_ADDRESS: Address = Address::new_id(10002);
+  const BRIDGE_ACTOR_WASM_PATH: &'static str = "../wasm/fvm_evm_bridge.compact.wasm";
+  pub const INIT_ACTOR_ADDRESS: Address = Address::new_id(1);
+  const RUNTIME_ACTOR_ADDRESS: Address = Address::new_id(10001);
+  const RUNTIME_ACTOR_WASM_PATH: &'static str = "../wasm/fvm_evm_runtime.compact.wasm";
+}
 
-const BRIDGE_ACTOR_ADDRESS: Address = Address::new_id(10002);
-const BRIDGE_ACTOR_WASM_PATH: &str = "../wasm/fvm_evm_bridge.compact.wasm";
+impl EVMTester {
+  /// Creates an FVM simulator with both actors loaded from WASM
+  /// ready to execute messages from external sources
+  pub fn new<const N: usize>() -> Result<Self> {
+    let mut instance = Tester::new(
+      NetworkVersion::V16,
+      StateTreeVersion::V4,
+      MemoryBlockstore::default(),
+    )?;
 
-/// Creates an FVM simulator with both actors loaded from WASM
-/// ready to execute messages from external sources
-pub fn create_tester<const N: usize>() -> Result<(Tester<MemoryBlockstore>, [Account; N])>
-{
-  let mut tester = Tester::new(
-    NetworkVersion::V16,
-    StateTreeVersion::V4,
-    MemoryBlockstore::default(),
-  )?;
+    let accounts = instance.create_accounts::<N>()?.to_vec();
 
-  let accounts: [Account; N] = tester.create_accounts()?;
+    let runtime_actor_wasm = fs::read(Self::RUNTIME_ACTOR_WASM_PATH)?;
+    let bridge_actor_wasm = fs::read(Self::BRIDGE_ACTOR_WASM_PATH)?;
 
-  let runtime_actor_wasm = fs::read(RUNTIME_ACTOR_WASM_PATH)?;
-  let bridge_actor_wasm = fs::read(BRIDGE_ACTOR_WASM_PATH)?;
+    #[derive(Debug, Serialize, Deserialize)]
+    struct State {
+      empty: bool,
+    }
 
-  #[derive(Debug, Serialize, Deserialize)]
-  struct State {
-    empty: bool,
+    let empty_state = State { empty: true };
+    let state_root = instance.set_state(&empty_state)?;
+
+    let runtime_code_cid = instance.set_actor_from_bin(
+      &runtime_actor_wasm,
+      state_root,
+      Self::RUNTIME_ACTOR_ADDRESS,
+      BigInt::zero(),
+    )?;
+
+    let bridge_code_cid = instance.set_actor_from_bin(
+      &bridge_actor_wasm,
+      state_root,
+      Self::BRIDGE_ACTOR_ADDRESS,
+      BigInt::zero(),
+    )?;
+
+    instance.instantiate_machine()?;
+
+    Ok(Self {
+      accounts,
+      bridge_code_cid,
+      runtime_code_cid,
+      instance,
+      sequences: HashMap::new(),
+    })
   }
 
-  let empty_state = State { empty: true };
-  let state_root = tester.set_state(&empty_state)?;
+  pub fn runtime_code_cid(&self) -> &Cid {
+    &self.runtime_code_cid
+  }
 
-  tester.set_actor_from_bin(
-    &runtime_actor_wasm,
-    state_root,
-    RUNTIME_ACTOR_ADDRESS,
-    BigInt::zero(),
-  )?;
+  pub fn accounts(&self) -> &[Account] {
+    &self.accounts
+  }
 
-  tester.set_actor_from_bin(
-    &bridge_actor_wasm,
-    state_root,
-    BRIDGE_ACTOR_ADDRESS,
-    BigInt::zero(),
-  )?;
-
-  tester.instantiate_machine()?;
-
-  Ok((tester, accounts))
-}
-
-pub fn run_in_large_stack(
-  op: impl FnOnce() -> Result<()> + Send + Sync + 'static,
-) -> Result<()> {
-  let mut result = Arc::new(None);
-  let mut result_clone = result.clone();
-  std::thread::Builder::new()
-    .stack_size(64 << 21)
-    .spawn(move || {
-      let result = Arc::get_mut(&mut result_clone).unwrap();
-      result.replace(op());
-    })?
-    .join()
-    .unwrap();
-
-  let result = Arc::get_mut(&mut result).unwrap();
-  (*result).take().unwrap()
-}
-
-pub fn send_message(
-  tester: &mut Tester<MemoryBlockstore>,
-  from: Address,
-  to: Address,
-  method_num: MethodNum,
-  params: RawBytes,
-  kind: ApplyKind,
-  sequence: u64,
-) -> Result<RawBytes> {
-  let message = Message {
-    from,
-    to,
-    gas_limit: 1000000000,
-    method_num,
-    params,
-    sequence,
-    ..Message::default()
-  };
-
-  let message_len = message.marshal_cbor()?;
-  let output = match tester.executor {
-    Some(ref mut executor) => {
-      let ret = executor.execute_message(message, kind, message_len.len())?;
-      if ret.msg_receipt.exit_code.is_success() {
-        ret.msg_receipt.return_data
-      } else {
-        return Err(anyhow::anyhow!(
-          "message failed with exit code {} ({:?})",
-          ret.msg_receipt.exit_code,
-          ret.failure_info
-        ));
+  pub fn send_message(
+    &mut self,
+    from: Address,
+    to: Address,
+    method_num: MethodNum,
+    params: RawBytes,
+    kind: ApplyKind,
+  ) -> Result<RawBytes> {
+    let sequence = match self.sequences.entry(from) {
+      Entry::Occupied(mut o) => {
+        *o.get_mut() += 1;
+        *o.get()
       }
-    }
-    None => return Err(anyhow::anyhow!("executor not initialized")),
-  };
+      Entry::Vacant(v) => *v.insert(0),
+    };
+    let message = Message {
+      from,
+      to,
+      gas_limit: 10000000000,
+      method_num,
+      params,
+      sequence,
+      ..Message::default()
+    };
 
-  Ok(output)
+    let message_len = message.marshal_cbor()?;
+    let output = match self.instance.executor {
+      Some(ref mut executor) => {
+        let ret = executor.execute_message(message, kind, message_len.len())?;
+        if ret.msg_receipt.exit_code.is_success() {
+          ret.msg_receipt.return_data
+        } else {
+          return Err(anyhow::anyhow!(
+            "message failed with exit code {} ({:?})",
+            ret.msg_receipt.exit_code,
+            ret.failure_info
+          ));
+        }
+      }
+      None => return Err(anyhow::anyhow!("executor not initialized")),
+    };
+
+    Ok(output)
+  }
+
+  pub fn send_explicit_message(
+    &mut self,
+    from: Address,
+    to: Address,
+    method: MethodNum,
+    params: RawBytes,
+  ) -> Result<RawBytes> {
+    self.send_message(from, to, method, params, ApplyKind::Explicit)
+  }
+
+  pub fn send_implicit_message(
+    &mut self,
+    from: Address,
+    to: Address,
+    method: MethodNum,
+    params: RawBytes,
+  ) -> Result<RawBytes> {
+    self.send_message(from, to, method, params, ApplyKind::Implicit)
+  }
+
+  pub fn construct_actor(
+    &mut self,
+    address: Address,
+    params: RawBytes,
+  ) -> Result<RawBytes> {
+    self.send_implicit_message(
+      Self::INIT_ACTOR_ADDRESS,
+      address,
+      METHOD_CONSTRUCTOR,
+      params,
+    )
+  }
+
+  pub fn invoke_actor(
+    &mut self,
+    caller: Address,
+    address: Address,
+    method: MethodNum,
+    params: RawBytes,
+  ) -> Result<RawBytes> {
+    self.send_explicit_message(caller, address, method, params)
+  }
 }
 
-pub fn send_explicit_message(
-  tester: &mut Tester<MemoryBlockstore>,
-  from: Address,
-  to: Address,
-  method: MethodNum,
-  params: RawBytes,
-  sequence: u64,
-) -> Result<RawBytes> {
-  send_message(
-    tester,
-    from,
-    to,
-    method,
-    params,
-    ApplyKind::Explicit,
-    sequence,
-  )
-}
-
-pub fn send_implicit_message(
-  tester: &mut Tester<MemoryBlockstore>,
-  from: Address,
-  to: Address,
-  method: MethodNum,
-  params: RawBytes,
-  sequence: u64,
-) -> Result<RawBytes> {
-  send_message(
-    tester,
-    from,
-    to,
-    method,
-    params,
-    ApplyKind::Implicit,
-    sequence,
-  )
-}
-
-pub fn construct_actor(
-  tester: &mut Tester<MemoryBlockstore>,
-  address: Address,
-  params: RawBytes,
-) -> Result<RawBytes> {
-  send_implicit_message(
-    tester,
-    INIT_ACTOR_ADDRESS,
-    address,
-    METHOD_CONSTRUCTOR,
-    params,
-    0,
-  )
-}
-
-pub fn invoke_actor(
-  tester: &mut Tester<MemoryBlockstore>,
-  caller: Address,
-  address: Address,
-  method: MethodNum,
-  params: RawBytes,
-  sequence: u64,
-) -> Result<RawBytes> {
-  send_explicit_message(tester, caller, address, method, params, sequence)
-}
-
-pub fn sign_transaction(
+pub fn sign_evm_transaction(
   transaction: Transaction,
   seckey: SecretKey,
 ) -> SignedTransaction {

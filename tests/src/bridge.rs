@@ -1,11 +1,5 @@
 use {
-  crate::{
-    construct_actor,
-    create_tester,
-    invoke_actor,
-    sign_transaction,
-    BRIDGE_ACTOR_ADDRESS,
-  },
+  crate::{sign_evm_transaction, EVMTester},
   anyhow::Result,
   fvm_evm::{Transaction, TransactionAction},
   fvm_ipld_encoding::RawBytes,
@@ -16,12 +10,12 @@ const PROCESS_TRANSACTION_METHOD_NUM: u64 = 2;
 
 #[test]
 fn deploy_contract() -> Result<()> {
-  let (mut tester, accounts) = create_tester::<1>()?;
+  let mut tester = EVMTester::new::<1>()?;
 
-  let output = construct_actor(
-    &mut tester, //
-    BRIDGE_ACTOR_ADDRESS,
-    RawBytes::default(),
+  // create the bridge actor and instantiate it with the evm runtime code CID.
+  let output = tester.construct_actor(
+    EVMTester::BRIDGE_ACTOR_ADDRESS,
+    RawBytes::serialize(tester.runtime_code_cid())?,
   )?;
 
   // bridge constructor does not return anything
@@ -40,16 +34,14 @@ fn deploy_contract() -> Result<()> {
   };
 
   let seckey = SecretKey::random(&mut rand::thread_rng());
-  let signed_tx = sign_transaction(create_tx, seckey);
+  let signed_tx = sign_evm_transaction(create_tx, seckey);
   let raw_tx = signed_tx.serialize();
 
-  invoke_actor(
-    &mut tester,
-    accounts[0].1,
-    BRIDGE_ACTOR_ADDRESS,
+  tester.invoke_actor(
+    tester.accounts()[0].1,
+    EVMTester::BRIDGE_ACTOR_ADDRESS,
     PROCESS_TRANSACTION_METHOD_NUM,
     RawBytes::serialize(raw_tx)?,
-    0,
   )?;
 
   Ok(())

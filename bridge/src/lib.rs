@@ -1,4 +1,5 @@
 use {
+  cid::Cid,
   create::create_contract,
   fil_actors_runtime::{
     actor_error,
@@ -6,10 +7,10 @@ use {
     ActorError,
     INIT_ACTOR_ADDR,
   },
-  fvm_evm::{abort, TransactionAction},
+  fvm_evm::TransactionAction,
   fvm_ipld_blockstore::Blockstore,
   fvm_ipld_encoding::{from_slice, RawBytes},
-  fvm_sdk::{debug, sself},
+  fvm_sdk::debug,
   fvm_shared::{MethodNum, METHOD_CONSTRUCTOR},
   invoke::invoke_contract,
   num_derive::FromPrimitive,
@@ -23,7 +24,7 @@ mod state;
 mod transfer;
 
 #[cfg(feature = "fil-actor")]
-fil_actors_runtime::wasm_trampoline!(RegistryActor);
+fil_actors_runtime::wasm_trampoline!(BridgeActor);
 
 #[derive(FromPrimitive)]
 #[repr(u64)]
@@ -32,9 +33,9 @@ pub enum Method {
   ProcessTransaction = 2,
 }
 
-pub struct RegistryActor;
-impl RegistryActor {
-  pub fn constructor<BS, RT>(rt: &mut RT) -> Result<(), ActorError>
+pub struct BridgeActor;
+impl BridgeActor {
+  pub fn constructor<BS, RT>(rt: &mut RT, runtime_cid: Cid) -> Result<(), ActorError>
   where
     BS: Blockstore,
     RT: Runtime<BS>,
@@ -43,15 +44,8 @@ impl RegistryActor {
 
     // Initialize the global state of the bridge to an empty map.
     // todo: in later iterations initialize with precompiles.
-    let initial_state_cid = state::initialize_bridge_state(rt)?;
-
-    if let Err(err) = sself::set_root(&initial_state_cid) {
-      abort!(
-        USR_ILLEGAL_STATE,
-        "failed to initialize bridge state: {err}"
-      );
-    }
-
+    state::BridgeState::create(rt, &runtime_cid)
+      .map_err(|e| ActorError::illegal_argument(format!("{e:?}")))?;
     Ok(())
   }
 
@@ -81,10 +75,11 @@ impl RegistryActor {
         }
       }
     }
+    .map_err(|e| ActorError::unspecified(format!("EVM Error: {e:?}")))
   }
 }
 
-impl ActorCode for RegistryActor {
+impl ActorCode for BridgeActor {
   fn invoke_method<BS, RT>(
     rt: &mut RT,
     method: MethodNum,
@@ -96,7 +91,8 @@ impl ActorCode for RegistryActor {
   {
     match FromPrimitive::from_u64(method) {
       Some(Method::Constructor) => {
-        Self::constructor(rt)?;
+        let runtime_cid: Cid = from_slice(&params)?;
+        Self::constructor(rt, runtime_cid)?;
         Ok(RawBytes::default())
       }
       Some(Method::ProcessTransaction) => {

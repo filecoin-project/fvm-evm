@@ -1,5 +1,5 @@
 use {
-  fil_actors_runtime::{runtime::Runtime, ActorError},
+  fil_actors_runtime::runtime::Runtime,
   fvm_evm::SignedTransaction,
   fvm_ipld_blockstore::Blockstore,
   fvm_ipld_encoding::RawBytes,
@@ -8,7 +8,7 @@ use {
 pub fn transfer_tokens<BS, RT>(
   _rt: &mut RT,
   _tx: SignedTransaction,
-) -> Result<RawBytes, ActorError>
+) -> anyhow::Result<RawBytes>
 where
   BS: Blockstore,
   RT: Runtime<BS>,
