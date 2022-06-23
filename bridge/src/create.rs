@@ -22,21 +22,21 @@ use {
   fvm_ipld_hamt::Hamt,
   fvm_shared::{address::Address, bigint::BigInt},
   rlp::RlpStream,
-  serde::{Deserialize, Serialize},
+  serde_tuple::{Deserialize_tuple, Serialize_tuple},
   sha3::{Digest, Keccak256},
 };
 
-const INIT_ACTOR_EXEC_METHOD_NUM: u64 = 1;
+const INIT_ACTOR_EXEC_METHOD_NUM: u64 = 2;
 
 /// Init actor Exec Params
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize_tuple, Deserialize_tuple)]
 pub struct ExecParams {
   pub code_cid: Cid,
   pub constructor_params: RawBytes,
 }
 
 /// Init actor Exec Return value
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize_tuple, Deserialize_tuple)]
 pub struct ExecReturn {
   /// ID based address for created actor
   pub id_address: Address,

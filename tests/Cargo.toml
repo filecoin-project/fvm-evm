@@ -24,6 +24,9 @@ fvm_ipld_encoding = { path = "../../ref-fvm/ipld/encoding" }
 fvm_ipld_blockstore = { path = "../../ref-fvm/ipld/blockstore" }
 fvm_integration_tests = { path = "../../ref-fvm/testing/integration" }
 
+log = "0.4"
+pretty_env_logger = "0.4"
+
 [dependencies.wasmtime]
 version = "0.37.0"
 default-features = false

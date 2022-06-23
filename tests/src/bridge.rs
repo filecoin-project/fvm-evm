@@ -10,8 +10,10 @@ const PROCESS_TRANSACTION_METHOD_NUM: u64 = 2;
 
 #[test]
 fn deploy_contract() -> Result<()> {
+  pretty_env_logger::init();
+  log::trace!("deploying EVM contract...");
   let mut tester = EVMTester::new::<1>()?;
-
+  log::trace!("Created EVM Tester");
   // create the bridge actor and instantiate it with the evm runtime code CID.
   let output = tester.construct_actor(
     EVMTester::BRIDGE_ACTOR_ADDRESS,

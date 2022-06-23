@@ -33,7 +33,7 @@ pub use {
 /// This type is used to construct a new instance of an EVM contract.
 /// Instances of this type are created by the bridge actor after a successful
 /// invocation of EVM contract constructor.
-#[derive(serde_tuple::Serialize_tuple, serde_tuple::Deserialize_tuple)]
+#[derive(Debug, serde_tuple::Serialize_tuple, serde_tuple::Deserialize_tuple)]
 pub struct EvmContractRuntimeConstructor {
   pub initial_state: cid::Cid,
   pub bytecode: bytes::Bytes,

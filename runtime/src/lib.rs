@@ -6,7 +6,7 @@ use {
     ActorError,
     INIT_ACTOR_ADDR,
   },
-  fvm_evm::H160,
+  fvm_evm::{EvmContractRuntimeConstructor, H160},
   fvm_ipld_blockstore::Blockstore,
   fvm_ipld_encoding::{from_slice, RawBytes},
   fvm_shared::{address::Address, MethodNum, METHOD_CONSTRUCTOR},
@@ -37,17 +37,18 @@ pub struct EvmRuntimeActor;
 impl EvmRuntimeActor {
   pub fn constructor<BS, RT>(
     rt: &mut RT,
-    bytecode: &[u8],
-    registry: Address,
+    args: &EvmContractRuntimeConstructor,
   ) -> Result<(), ActorError>
   where
     BS: Blockstore,
     RT: Runtime<BS>,
   {
-    fvm_sdk::debug::log(format!("Inside FVM Runtime actor constructor!"));
-    rt.validate_immediate_caller_is(std::iter::once(&*INIT_ACTOR_ADDR))?;
-    ContractState::new(bytecode, registry, rt.store(), H160::zero())
-      .map_err(|e| ActorError::illegal_state(e.to_string()))?;
+    fvm_sdk::debug::log(format!(
+      "Inside FVM Runtime actor constructor! params: {args:?}"
+    ));
+    rt.validate_immediate_caller_accept_any()?;
+    // ContractState::new(bytecode, registry, rt.store(), H160::zero())
+    //   .map_err(|e| ActorError::illegal_state(e.to_string()))?;
     Ok(())
   }
 
@@ -136,8 +137,7 @@ impl ActorCode for EvmRuntimeActor {
   {
     match FromPrimitive::from_u64(method) {
       Some(Method::Constructor) => {
-        let (bytecode, registry): (Vec<u8>, Address) = from_slice(&params)?;
-        Self::constructor(rt, &bytecode, registry)?;
+        Self::constructor(rt, &from_slice(&params)?)?;
         Ok(RawBytes::default())
       }
       Some(Method::InvokeContract) => Self::invoke_contract(rt),
