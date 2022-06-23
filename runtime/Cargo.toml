@@ -29,14 +29,12 @@ fil_actors_runtime = { git = "https://github.com/filecoin-project/builtin-actors
 
 [build-dependencies]
 wasm-builder = "3.0.1"
-wasmtime = "0.37"
 
 [dev-dependencies]
 libsecp256k1 = { version = "0.7" }
 rand = "0.8"
 rand_chacha = "0.3"
 anyhow = "1.0.52"
-wasmtime = "0.37.0"
 
 [features]
 default = ["fil-actor"]
