@@ -119,6 +119,7 @@ where
         bytecode,
         initial_state: system.flush_state()?,
         registry: bridge_addr,
+        address: contract_address,
       };
 
       fvm_sdk::debug::log(format!(

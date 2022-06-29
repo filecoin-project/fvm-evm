@@ -22,7 +22,6 @@ pub struct AccessListItem {
   pub slots: Vec<H256>,
 }
 
-#[derive(Debug)]
 pub enum Transaction {
   Legacy {
     chain_id: Option<u64>,
@@ -523,6 +522,73 @@ fn parse_eip1559_transaction(bytes: &[u8]) -> Result<SignedTransaction, DecoderE
       access_list: rlp.list_at(8)?,
     },
   })
+}
+
+impl Debug for Transaction {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Self::Legacy {
+        chain_id,
+        nonce,
+        gas_price,
+        gas_limit,
+        action,
+        value,
+        input,
+      } => f
+        .debug_struct("Legacy")
+        .field("chain_id", chain_id)
+        .field("nonce", nonce)
+        .field("gas_price", gas_price)
+        .field("gas_limit", gas_limit)
+        .field("action", action)
+        .field("value", value)
+        .field("input", &hex::encode(&input))
+        .finish(),
+      Self::EIP2930 {
+        chain_id,
+        nonce,
+        gas_price,
+        gas_limit,
+        action,
+        value,
+        input,
+        access_list,
+      } => f
+        .debug_struct("EIP2930")
+        .field("chain_id", chain_id)
+        .field("nonce", nonce)
+        .field("gas_price", gas_price)
+        .field("gas_limit", gas_limit)
+        .field("action", action)
+        .field("value", value)
+        .field("input", &hex::encode(&input))
+        .field("access_list", access_list)
+        .finish(),
+      Self::EIP1559 {
+        chain_id,
+        nonce,
+        max_priority_fee_per_gas,
+        max_fee_per_gas,
+        gas_limit,
+        action,
+        value,
+        input,
+        access_list,
+      } => f
+        .debug_struct("EIP1559")
+        .field("chain_id", chain_id)
+        .field("nonce", nonce)
+        .field("max_priority_fee_per_gas", max_priority_fee_per_gas)
+        .field("max_fee_per_gas", max_fee_per_gas)
+        .field("gas_limit", gas_limit)
+        .field("action", action)
+        .field("value", value)
+        .field("input", &hex::encode(&input))
+        .field("access_list", access_list)
+        .finish(),
+    }
+  }
 }
 
 #[cfg(test)]

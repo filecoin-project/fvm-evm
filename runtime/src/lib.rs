@@ -4,12 +4,11 @@ use {
     actor_error,
     runtime::{ActorCode, Runtime},
     ActorError,
-    INIT_ACTOR_ADDR,
   },
-  fvm_evm::{EvmContractRuntimeConstructor, H160},
+  fvm_evm::EvmContractRuntimeConstructor,
   fvm_ipld_blockstore::Blockstore,
   fvm_ipld_encoding::{from_slice, RawBytes},
-  fvm_shared::{address::Address, MethodNum, METHOD_CONSTRUCTOR},
+  fvm_shared::{MethodNum, METHOD_CONSTRUCTOR},
   num_derive::FromPrimitive,
   num_traits::FromPrimitive,
 };
@@ -21,7 +20,7 @@ fil_actors_runtime::wasm_trampoline!(EvmRuntimeActor);
 
 /// Maximum allowed EVM bytecode size.
 /// The contract code size limit is 24kB.
-const _MAX_CODE_SIZE: usize = 0x6000;
+const MAX_CODE_SIZE: usize = 0x6000;
 
 #[derive(FromPrimitive)]
 #[repr(u64)]
@@ -47,8 +46,32 @@ impl EvmRuntimeActor {
       "Inside FVM Runtime actor constructor! params: {args:?}"
     ));
     rt.validate_immediate_caller_accept_any()?;
-    // ContractState::new(bytecode, registry, rt.store(), H160::zero())
-    //   .map_err(|e| ActorError::illegal_state(e.to_string()))?;
+
+    if args.bytecode.len() > MAX_CODE_SIZE {
+      return Err(ActorError::illegal_argument(format!(
+        "EVM byte code length ({}) is exceeding the maximum allowed of {MAX_CODE_SIZE}",
+        args.bytecode.len()
+      )));
+    }
+
+    if args.bytecode.is_empty() {
+      return Err(ActorError::illegal_argument("no bytecode provided".into()));
+    }
+
+    if args.initial_state == cid::Cid::default() {
+      return Err(ActorError::illegal_state(
+        "EVM Actor must be initialized to some initial state".into(),
+      ));
+    }
+
+    ContractState::new(
+      &args.bytecode,
+      args.registry,
+      args.address,
+      args.initial_state,
+    )
+    .map_err(|e| ActorError::illegal_state(e.to_string()))?;
+
     Ok(())
   }
 

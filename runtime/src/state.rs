@@ -1,9 +1,7 @@
 use {
   cid::Cid,
-  fvm_evm::{abort, H160, U256},
-  fvm_ipld_blockstore::Blockstore,
+  fvm_evm::{abort, H160},
   fvm_ipld_encoding::{to_vec, Cbor, RawBytes, DAG_CBOR},
-  fvm_ipld_hamt::Hamt,
   fvm_sdk::{ipld, sself},
   fvm_shared::address::Address,
   multihash::Code,
@@ -39,11 +37,11 @@ impl ContractState {
   /// EVM contract. This method will execute the initialization code
   /// and store the contract bytecode, and the EVM constructor state
   /// in the state HAMT.
-  pub fn new<'r, BS: Blockstore>(
+  pub fn new(
     bytecode: &(impl AsRef<[u8]> + ?Sized),
     bridge: Address,
-    blockstore: BS,
     self_address: H160,
+    initial_state: Cid,
   ) -> anyhow::Result<Self> {
     let this = Self {
       bridge,
@@ -54,7 +52,7 @@ impl ContractState {
         DAG_CBOR,
         &RawBytes::serialize(bytecode.as_ref())?,
       )?,
-      state: Hamt::<_, U256, U256>::new(&blockstore).flush()?,
+      state: initial_state,
     };
 
     sself::set_root(&ipld::put(
