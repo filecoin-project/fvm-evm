@@ -1,5 +1,3 @@
-#[cfg(not(test))]
-use fvm_sdk::crypto::recover_public_key;
 use {
   crate::{H160, H256, U256},
   bytes::Bytes,
@@ -412,14 +410,18 @@ impl SignedTransaction {
     }
 
     #[cfg(not(test))] // use a syscall to fvm
-    return recover_public_key(&self.transaction.hash().to_fixed_bytes(), &sig).map_err(
-      |e| ActorError::illegal_argument(format!("failed to recover public key: {e:?}")),
-    );
+    return fvm_sdk::crypto::recover_secp_public_key(
+      &self.transaction.hash().to_fixed_bytes(),
+      &sig,
+    )
+    .map_err(|e| {
+      ActorError::illegal_argument(format!("failed to recover public key: {e:?}"))
+    });
 
     #[cfg(test)]
     // invoke the recovery impl directly as there is not FVM running this code
     return Ok(
-      fvm_shared::crypto::signature::ops::recover_public_key(
+      fvm_shared::crypto::signature::ops::recover_secp_public_key(
         &self.transaction.hash().to_fixed_bytes(),
         &sig,
       )

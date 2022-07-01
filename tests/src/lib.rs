@@ -1,4 +1,5 @@
 use {
+  anyhow::Result,
   cid::Cid,
   fvm::executor::{ApplyKind, Executor},
   fvm_evm::{
@@ -8,11 +9,24 @@ use {
     TransactionSignature,
     H256,
   },
-  fvm_integration_tests::tester::Account,
+  fvm_integration_tests::tester::{Account, Tester},
+  fvm_ipld_blockstore::MemoryBlockstore,
   fvm_ipld_encoding::{Cbor, RawBytes},
-  fvm_shared::{message::Message, MethodNum, METHOD_CONSTRUCTOR},
+  fvm_shared::{
+    address::Address,
+    bigint::{BigInt, Zero},
+    message::Message,
+    state::StateTreeVersion,
+    version::NetworkVersion,
+    MethodNum,
+    METHOD_CONSTRUCTOR,
+  },
   libsecp256k1::{sign, Message as SecpMessage, SecretKey},
-  std::collections::{hash_map::Entry, HashMap},
+  serde::{Deserialize, Serialize},
+  std::{
+    collections::{hash_map::Entry, HashMap},
+    fs,
+  },
 };
 
 #[cfg(test)]
@@ -21,22 +35,8 @@ mod bridge;
 #[cfg(test)]
 mod runtime;
 
-use {
-  anyhow::Result,
-  fvm_integration_tests::tester::Tester,
-  fvm_ipld_blockstore::MemoryBlockstore,
-  fvm_shared::{
-    address::Address,
-    bigint::{BigInt, Zero},
-    state::StateTreeVersion,
-    version::NetworkVersion,
-  },
-  serde::{Deserialize, Serialize},
-  std::fs,
-};
-
-struct EVMTester {
-  bridge_code_cid: Cid,
+pub struct EVMTester {
+  _bridge_code_cid: Cid,
   runtime_code_cid: Cid,
   instance: Tester<MemoryBlockstore>,
   accounts: Vec<Account>,
@@ -45,11 +45,12 @@ struct EVMTester {
 
 // constants
 impl EVMTester {
-  const BRIDGE_ACTOR_ADDRESS: Address = Address::new_id(10002);
-  const BRIDGE_ACTOR_WASM_PATH: &'static str = "../wasm/fvm_evm_bridge.compact.wasm";
+  pub const BRIDGE_ACTOR_ADDRESS: Address = Address::new_id(10002);
+  pub const BRIDGE_ACTOR_WASM_PATH: &'static str = "../wasm/fvm_evm_bridge.compact.wasm";
   pub const INIT_ACTOR_ADDRESS: Address = Address::new_id(1);
-  const RUNTIME_ACTOR_ADDRESS: Address = Address::new_id(10001);
-  const RUNTIME_ACTOR_WASM_PATH: &'static str = "../wasm/fvm_evm_runtime.compact.wasm";
+  pub const RUNTIME_ACTOR_ADDRESS: Address = Address::new_id(10001);
+  pub const RUNTIME_ACTOR_WASM_PATH: &'static str =
+    "../wasm/fvm_evm_runtime.compact.wasm";
 }
 
 impl EVMTester {
@@ -93,7 +94,7 @@ impl EVMTester {
 
     Ok(Self {
       accounts,
-      bridge_code_cid,
+      _bridge_code_cid: bridge_code_cid,
       runtime_code_cid,
       instance,
       sequences: HashMap::new(),

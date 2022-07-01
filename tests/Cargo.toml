@@ -22,10 +22,11 @@ pretty_env_logger = "0.4"
 fvm_ipld_blockstore = "0.1.1"
 fvm_ipld_encoding = "0.2.2"
 fvm_shared = { version = "0.8.0" }
-fvm = { version = "1.0.0-rc.3", default-features = false }
+fvm = { version = "2.0.0-alpha.1", default-features = false }
 # We should do this with a patch, but we can't because it's not published to crates.io and
 # https://github.com/rust-lang/cargo/issues/5478
-fvm_integration_tests = { git = "https://github.com/filecoin-project/ref-fvm", branch = "karim/recover-pubkey-syscall" }
+#fvm_integration_tests = { git = "https://github.com/filecoin-project/ref-fvm", branch = "karim/recover-pubkey-syscall" }
+fvm_integration_tests = { path = "../../ref-fvm/testing/integration" }
 
 [dependencies.wasmtime]
 version = "0.37.0"
