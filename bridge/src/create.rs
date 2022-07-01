@@ -123,7 +123,7 @@ where
       };
 
       fvm_sdk::debug::log(format!(
-        "Bridge thinks that runtime Cid is {:?}",
+        "Bridge thinks that EVM runtime CodeCid is {:?}",
         bridge_state.runtime_cid()
       ));
 

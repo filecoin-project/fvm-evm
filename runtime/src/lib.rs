@@ -43,7 +43,7 @@ impl EvmRuntimeActor {
     RT: Runtime<BS>,
   {
     fvm_sdk::debug::log(format!(
-      "Inside FVM Runtime actor constructor! params: {args:?}"
+      "Inside FVM Runtime actor constructor! params: {args:#?}"
     ));
     rt.validate_immediate_caller_accept_any()?;
 
