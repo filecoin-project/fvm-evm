@@ -25,18 +25,20 @@ strum = "0.24"
 strum_macros = "0.24"
 sha3 = { version = "0.10", default-features = false }
 rlp = { version = "0.5.1", default-features = false }
-fvm_ipld_blockstore = "0.1.1"
-fvm_ipld_encoding = "0.2.2"
-fvm_ipld_hamt = "0.5.1"
-fvm_sdk = "2.0.0-alpha.1"
-fvm_shared = { version = "0.8.0", default-features = false }
-fil_actors_runtime = { git = "https://github.com/filecoin-project/builtin-actors.git", branch = "experimental/fvm-m2", features = [
+
+
+fvm_ipld_blockstore = { path = "../../ref-fvm/ipld/blockstore" }
+fvm_ipld_encoding = { path = "../../ref-fvm/ipld/encoding" }
+fvm_ipld_hamt = { path = "../../ref-fvm/ipld/hamt" }
+fvm_sdk = { path = "../../ref-fvm/sdk" }
+fvm_shared = { path = "../../ref-fvm/shared", default-features = false }
+fil_actors_runtime = { path = "../../builtin-actors/runtime", features = [
   "fil-actor",
 ] }
 
 [dev-dependencies]
-libsecp256k1 = { version = "0.7.0", features = ["static-context"] }
-hex-literal = "0.3.4"
-fvm_shared = { version = "0.8.0", default-features = false, features = [
+fvm_shared = { path = "../../ref-fvm/shared", default-features = false, features = [
   "crypto",
 ] }
+libsecp256k1 = { version = "0.7.0", features = ["static-context"] }
+hex-literal = "0.3.4"

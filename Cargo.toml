@@ -22,3 +22,4 @@ fvm_integration_tests = { path = "../ref-fvm/testing/integration" }
 fvm_sdk = { path = "../ref-fvm/sdk" }
 fvm_ipld_hamt = { path = "../ref-fvm/ipld/hamt" }
 fvm_ipld_amt = { path = "../ref-fvm/ipld/amt" }
+fil_actors_runtime = { path = "../builtin-actors/runtime" }
