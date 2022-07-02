@@ -10,7 +10,6 @@ use {
   fvm_evm::TransactionAction,
   fvm_ipld_blockstore::Blockstore,
   fvm_ipld_encoding::{from_slice, RawBytes},
-  fvm_sdk::debug,
   fvm_shared::{MethodNum, METHOD_CONSTRUCTOR},
   invoke::invoke_contract,
   num_derive::FromPrimitive,
@@ -62,13 +61,13 @@ impl BridgeActor {
 
     let transaction = fvm_evm::SignedTransaction::try_from(rlp)
       .map_err(|e| ActorError::illegal_argument(format!("{e:?}")))?;
-    debug::log(format!("FVM transaction: {transaction:#?}"));
 
     match transaction.action() {
       TransactionAction::Call(_) => invoke_contract(rt, transaction),
       TransactionAction::Create => {
         if transaction.input().is_empty() {
-          transfer_tokens(rt, transaction) // transaction is burning tokens
+          // transaction is burning tokens
+          transfer_tokens(rt, transaction)
         } else {
           // transaction is creating new contract
           create_contract(rt, transaction)

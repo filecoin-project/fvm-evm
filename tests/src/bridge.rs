@@ -21,7 +21,7 @@ fn extract_sender(tx: &SignedTransaction) -> H160 {
   }
 
   let pubkey = fvm_shared::crypto::signature::ops::recover_secp_public_key(
-    &tx.hash().to_fixed_bytes(),
+    &tx.transaction.hash().to_fixed_bytes(),
     &sig,
   )
   .unwrap()

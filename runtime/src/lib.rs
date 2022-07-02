@@ -5,9 +5,19 @@ use {
     runtime::{ActorCode, Runtime},
     ActorError,
   },
-  fvm_evm::EvmContractRuntimeConstructor,
+  fvm_evm::{
+    execute,
+    Bytecode,
+    EvmContractRuntimeConstructor,
+    ExecutionState,
+    StatusCode,
+    System,
+    U256,
+  },
   fvm_ipld_blockstore::Blockstore,
   fvm_ipld_encoding::{from_slice, RawBytes},
+  fvm_ipld_hamt::Hamt,
+  fvm_sdk::{debug, ipld},
   fvm_shared::{MethodNum, METHOD_CONSTRUCTOR},
   num_derive::FromPrimitive,
   num_traits::FromPrimitive,
@@ -26,7 +36,7 @@ const MAX_CODE_SIZE: usize = 0x6000;
 #[repr(u64)]
 pub enum Method {
   Constructor = METHOD_CONSTRUCTOR,
-  InvokeContract = 2,
+  ProcessTransaction = 2,
   GetStorageValue = 3,
   GetCodeHash = 4,
   GetCodeSize = 5,
@@ -75,49 +85,77 @@ impl EvmRuntimeActor {
     Ok(())
   }
 
-  pub fn invoke_contract<BS, RT>(rt: &mut RT) -> Result<RawBytes, ActorError>
+  pub fn process_transaction<BS, RT>(
+    rt: &mut RT,
+    rlp: &[u8],
+  ) -> Result<RawBytes, ActorError>
   where
     BS: Blockstore,
     RT: Runtime<BS>,
   {
     rt.validate_immediate_caller_accept_any()?;
-    // let state: ContractState = rt.state()?;
-    // let message = Message {
-    //   kind: fvm_evm::CallKind::Call,
-    //   is_static: false,
-    //   depth: 1,
-    //   gas: 2100,
-    //   recipient: H160::zero(),
-    //   sender: H160::zero(),
-    //   input_data: Bytes::new(),
-    //   value: U256::zero(),
-    // };
 
-    // let bytecode: Vec<_> = from_slice(&ipld::get(&state.bytecode).map_err(|e| {
-    //   ActorError::illegal_state(format!("failed to load bytecode: {e:?}"))
-    // })?)
-    // .map_err(|e| ActorError::unspecified(format!("failed to load bytecode:
-    // {e:?}")))?;
+    let transaction = fvm_evm::SignedTransaction::try_from(rlp)
+      .map_err(|e| ActorError::illegal_argument(format!("{e:?}")))?;
+    debug::log(format!("Runtime processing tx: {transaction:#?}"));
 
-    // // EVM contract bytecode
-    // let bytecode = Bytecode::new(&bytecode)
-    //   .map_err(|e| ActorError::unspecified(format!("invalid bytecode: {e:?}")))?;
+    // Load current actor state tree that contains its bytecode,
+    // state Hamt and metadata about the bridge address and its own EVM address.
+    let state: ContractState = rt.state()?;
 
-    // // the execution state of the EVM, stack, heap, etc.
-    // let mut runtime = ExecutionState::new(&message);
+    // retreive the EVM bytecode from actor state tree
+    let bytecode_block = ipld::get(&state.bytecode)
+      .map_err(|e| ActorError::illegal_state(format!("{e:?}")))?;
 
-    // // the interface between the EVM interpretter and the FVM system
-    // let mut system = System::new(state.state, rt, state.bridge,
-    // state.self_address)   .map_err(|e|
-    // ActorError::unspecified(format!("failed to create runtime: {e:?}")))?;
+    // Deserialize bytecode CBOR block into byte array
+    let bytecode_bytes: Vec<u8> = from_slice(&bytecode_block)
+      .map_err(|e| ActorError::serialization(format!("{e:?}")))?;
 
-    // // invoke the bytecode using the current state and the platform interface
-    // let output = execute(&bytecode, &mut runtime, &mut system)
-    //   .map_err(|e| ActorError::unspecified(format!("contract execution error:
-    // {e:?}")))?;
+    // Analize raw EVM bytecode and identify all valid jump destinations
+    let bytecode = Bytecode::new(&bytecode_bytes)
+      .map_err(|e| ActorError::unspecified(format!("EVM bytecode error: {e:?}")))?;
 
-    // log(format!("evm output: {output:?}"));
-    Ok(RawBytes::default())
+    let hamt = Hamt::<_, U256, U256>::load(&state.state, rt.store()).unwrap();
+    hamt
+      .for_each(|k, v| {
+        let mut key_bytes = [0u8; 32];
+        k.to_big_endian(&mut key_bytes);
+        debug::log(format!("hamt entry: 0x{} -> {v:?}", hex::encode(key_bytes)));
+        Ok(())
+      })
+      .unwrap();
+
+    // Create an instance of a platform abstraction layer
+    let system = System::new(
+      state.state,
+      rt,
+      state.bridge,
+      state.self_address,
+      &transaction,
+    )
+    .map_err(|e| ActorError::unspecified(format!("EVM system error: {e:?}")))?;
+
+    // Create an execution context for the incoming transaction
+    let message = transaction.try_into()?;
+    let mut exec_state = ExecutionState::new(&message);
+
+    // invoke the transaction on the bytecode of this actor
+    let exec_status = execute(&bytecode, &mut exec_state, &system)
+      .map_err(|e| ActorError::unspecified(format!("EVM execution error: {e:?}")))?;
+
+    debug::log(format!("Exec Status: {exec_status:#?}"));
+
+    if !exec_status.reverted && exec_status.status_code == StatusCode::Success {
+      Ok(
+        RawBytes::serialize(U256::from_big_endian(&exec_status.output_data))
+          .map_err(|e| ActorError::serialization(format!("{e:?}")))?,
+      )
+    } else {
+      Err(ActorError::unspecified(format!(
+        "EVM error: {:?}",
+        exec_status
+      )))
+    }
   }
 
   pub fn get_storage_value<BS, RT>(rt: &mut RT) -> Result<RawBytes, ActorError>
@@ -163,7 +201,10 @@ impl ActorCode for EvmRuntimeActor {
         Self::constructor(rt, &from_slice(&params)?)?;
         Ok(RawBytes::default())
       }
-      Some(Method::InvokeContract) => Self::invoke_contract(rt),
+      Some(Method::ProcessTransaction) => {
+        let rlp: Vec<u8> = from_slice(&params)?;
+        Self::process_transaction(rt, &rlp)
+      }
       Some(Method::GetStorageValue) => Self::get_storage_value(rt),
       Some(Method::GetCodeHash) => Self::get_code_hash(rt),
       Some(Method::GetCodeSize) => Self::get_code_size(rt),

@@ -10,6 +10,7 @@ keywords = ["filecoin", "web3", "wasm", "evm"]
 doctest = false
 
 [dependencies]
+hex = "0.4.3"
 fvm-evm = { path = "../shared", default-features = false }
 anyhow = "1"
 cid = { version = "0.8.5", default-features = false }

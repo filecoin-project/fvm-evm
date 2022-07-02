@@ -20,6 +20,7 @@ use {
   fvm_ipld_blockstore::Blockstore,
   fvm_ipld_encoding::{from_slice, RawBytes},
   fvm_ipld_hamt::Hamt,
+  fvm_sdk::debug,
   fvm_shared::{address::Address, bigint::BigInt},
   rlp::RlpStream,
   serde_tuple::{Deserialize_tuple, Serialize_tuple},
@@ -63,6 +64,8 @@ where
   BS: Blockstore,
   RT: Runtime<BS>,
 {
+  debug::log(format!("Creating contract with transaction: {tx:#?}"));
+
   // Create a temporary contract state that will be used to store
   // results of constructor execution, then assigned as the state
   // root of a new EVM actor
