@@ -1,4 +1,14 @@
-# Filecoin Virtual Machine EVM Actor
+# [ARCHIVED] Filecoin Virtual Machine EVM Actor prototype
+
+---
+>
+> ### This is a deprecated repo with historical relevance
+>
+> This repo is where the EVM actor for the Filecoin Virtual Machine was incubated.
+>
+> This actor was merged into builtin-actors in the following PR: https://github.com/filecoin-project/builtin-actors/pull/517
+>
+---
 
 This is a very early stage of the project and this readme will evolve over time to include build and deployment instrustions.
 
